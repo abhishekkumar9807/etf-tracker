@@ -780,10 +780,6 @@
                     <div class="status-label">Total ETFs</div>
                     <div class="status-value" id="total-etfs">0</div>
                 </div>
-                <div class="status-item">
-                    <div class="status-label">Scrapes Today</div>
-                    <div class="status-value" id="scrape-count">0/50</div>
-                </div>
             </div>
         </div>
          <!-- MCX Spot Prices Section -->
@@ -817,422 +813,594 @@
 
         <!-- CONTENT AREA -->
         <div id="content">
-  <!-- Loading Spinner -->
-  <div class="loading" id="loading-spinner">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Loading ETF data...</div>
-  </div>
-  
-  <!-- Gold ETFs Container -->
-  <div class="etf-section" id="gold-section" style="display: none;">
-    <h2 class="section-title">🏆 Gold ETFs</h2>
-    <div id="gold-etfs" class="etf-grid"></div>
-  </div>
-  
-  <!-- Silver ETFs Container -->
-  <div class="etf-section" id="silver-section" style="display: none;">
-    <h2 class="section-title">🥈 Silver ETFs</h2>
-    <div id="silver-etfs" class="etf-grid"></div>
-  </div>
-</div>
+            <!-- Loading Spinner -->
+        <div id="loading-spinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading ETF data from GitHub...</p>
+        </div>
 
+        <!-- Gold ETFs Section -->
+        <section id="gold-section" style="display: none;">
+            <div id="gold-etfs" class="etf-grid"></div>
+        </section>
 
-    <!-- JavaScript will be added in PART 3 -->
-    
-    <!-- Papa Parse Library for CSV Parsing -->
+        <!-- Silver ETFs Section -->
+        <section id="silver-section" style="display: none;">
+            <div id="silver-etfs" class="etf-grid"></div>
+        </section>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
-<script>
-        // ============================================================================
-        // GITHUB CONFIGURATION - CHANGE THESE VALUES!
-        // ============================================================================
+    <!-- JavaScript will be added in PART 3 -->
+    <script>
+        // Placeholder - JavaScript from PART 3 will be inserted here
+        
+// ============================================================================
+// GLOBAL VARIABLES
+// ============================================================================
+const GITHUB_USERNAME = 'abhishekkumar9807';  // Replace with your username
+const GITHUB_REPO = 'etf-tracker'; 
+const GITHUB_BRANCH = 'main';
 
-        const GITHUB_USERNAME = 'abhishekkumar9807';  // ← CHANGE THIS!
-        const REPO_NAME = 'etf-tracker';          // ← CHANGE IF DIFFERENT!
+const ETF_CSV_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/data/etf_cache.csv`;
+const STATIC_CSV_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/data/etf_static_cache.csv`;
+const MCX_JSON_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/data/mcx_cache.json`;
+let currentData = null;
+let refreshing = false;
+let goldSortCriteria = 'discount';
+let silverSortCriteria = 'discount';
 
-        const BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/data`;
-        const ETF_CSV_URL = `${BASE_URL}/etf_cache.csv`;
-        const STATIC_CSV_URL = `${BASE_URL}/etf_static_cache.csv`;
-        const MCX_JSON_URL = `${BASE_URL}/mcx_cache.json`;
-        const TIMESTAMP_URL = `${BASE_URL}/last_updated.txt`;
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
 
-        // ============================================================================
-        // STATE MANAGEMENT (keeping all your variables)
-        // ============================================================================
-        let allETFs = [];
-        let goldETFs = [];
-        let silverETFs = [];
-        let mcxData = {};
-        let currentSort = 'discount';
-        let currentFilter = 'all';
-        let expandedCards = new Set();
-
-        // ============================================================================
-        // UTILITY FUNCTIONS (keeping all yours)
-        // ============================================================================
-
-        function formatNumber(num) {
-            if (!num || isNaN(num)) return '0';
-            num = parseFloat(num);
-            if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
-            if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
-            if (num >= 1000) return (num / 1000).toFixed(2) + ' K';
-            return num.toFixed(2);
+// Load data when page loads
+window.addEventListener('DOMContentLoaded', function() {
+    console.log('[Init] Loading initial data...');
+    loadData();
+    
+    // Auto-refresh every 3 minutes (optimized interval)
+    setInterval(async function() {
+        const now = new Date().toLocaleTimeString();
+        console.log(`[Auto-refresh] Polling at ${now}`);
+        
+        if (!refreshing) {
+            console.log('[Auto-refresh] Fetching new data...');
+            await loadData();
+            console.log('[Auto-refresh] Display updated! ✅');
+        } else {
+            console.log('[Auto-refresh] Skipping (scraping in progress)');
         }
+    }, 180000); // 3 minutes (180000ms)
+    
+    console.log('[Init] Auto-refresh enabled: Every 3 minutes');
+});
 
-        function formatCurrency(num) {
-            if (!num || isNaN(num)) return '₹0.00';
-            return '₹' + parseFloat(num).toFixed(2);
-        }
 
-        function formatPercent(num) {
-            if (!num || isNaN(num)) return '0.00%';
-            const val = parseFloat(num);
-            return (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
-        }
+// ============================================================================
+// DATA LOADING
+// ============================================================================
 
-        // ============================================================================
-        // DATA LOADING FROM GITHUB
-        // ============================================================================
+async function loadData() {
+    console.log('📥 Loading data from GitHub...');
+    
+    try {
+        const timestamp = Date.now();
 
-        async function loadData() {
-            console.log('📥 Loading data from GitHub...');
-            updateStatus('Loading data from GitHub...', 'loading');
+        // Fetch all data in parallel from GitHub
+        const [etfCsvText, staticCsvText, mcxJson] = await Promise.all([
+            fetch(`${ETF_CSV_URL}?t=${timestamp}`).then(r => r.text()),
+            fetch(`${STATIC_CSV_URL}?t=${timestamp}`).then(r => r.text()),
+            fetch(`${MCX_JSON_URL}?t=${timestamp}`).then(r => r.json())
+        ]);
 
-            try {
-                const timestamp = Date.now();
+        // Parse CSVs using Papa Parse
+        const etfData = Papa.parse(etfCsvText, { header: true, skipEmptyLines: true }).data;
+        const staticData = Papa.parse(staticCsvText, { header: true, skipEmptyLines: true }).data;
 
-                // Fetch all data in parallel
-                const [etfCsvText, staticCsvText, mcxJson, lastUpdated] = await Promise.all([
-                    fetch(`${ETF_CSV_URL}?t=${timestamp}`).then(r => r.text()),
-                    fetch(`${STATIC_CSV_URL}?t=${timestamp}`).then(r => r.text()),
-                    fetch(`${MCX_JSON_URL}?t=${timestamp}`).then(r => r.json()),
-                    fetch(`${TIMESTAMP_URL}?t=${timestamp}`).then(r => r.text()).catch(() => 'Unknown')
-                ]);
-
-                // Parse CSV files using Papa Parse
-                const etfData = Papa.parse(etfCsvText, { header: true, skipEmptyLines: true }).data;
-                const staticData = Papa.parse(staticCsvText, { header: true, skipEmptyLines: true }).data;
-
-                // Merge static and dynamic data
-                const staticMap = {};
-                staticData.forEach(row => {
-                    staticMap[row.symbol] = row;
-                });
-
-                allETFs = etfData.map(etf => ({
-                    ...etf,
-                    ...staticMap[etf.symbol]
-                }));
-
-                // Separate gold and silver
-                goldETFs = allETFs.filter(etf => etf.type === 'gold');
-                silverETFs = allETFs.filter(etf => etf.type === 'silver');
-
-                mcxData = mcxJson;
-
-                // Update UI
-                renderSection();
-                updateStatus(`✅ Loaded ${allETFs.length} ETFs successfully`, 'success');
-
-                console.log(`✅ Loaded ${goldETFs.length} gold + ${silverETFs.length} silver ETFs`);
-                // ========== UPDATE STATUS BAR ==========
-                // Update Last Updated
-                const lastUpdateEl = document.getElementById('last-update');
-                if (lastUpdateEl && lastUpdated) {
-                  try {
-                    const date = new Date(lastUpdated.trim());
-                    if (!isNaN(date.getTime())) {
-                      lastUpdateEl.textContent = date.toLocaleString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      });
-                    }
-                  } catch (e) {
-                    lastUpdateEl.textContent = lastUpdated.trim();
-                  }
-                }
-                
-                // Update Total ETFs
-                const totalEtfsEl = document.getElementById('total-etfs');
-                if (totalEtfsEl) {
-                  totalEtfsEl.textContent = allETFs.length;
-                }
-                
-                // Update Scrape Count
-                const scrapeCountEl = document.getElementById('scrape-count');
-                if (scrapeCountEl) {
-                  scrapeCountEl.textContent = '1/50'; // Update if tracking actual scrapes
-                }
-                
-                // Update MCX/IBJA Gold Price
-                const mcxGoldEl = document.getElementById('mcx-gold');
-                if (mcxGoldEl && mcxData && mcxData.gold_per_gram) {
-                  mcxGoldEl.textContent = `₹${formatCurrency(mcxData.gold_per_gram)}/gram`;
-                }
-                
-                // Update MCX/IBJA Silver Price
-                const mcxSilverEl = document.getElementById('mcx-silver');
-                if (mcxSilverEl && mcxData && mcxData.silver_per_gram) {
-                  mcxSilverEl.textContent = `₹${formatCurrency(mcxData.silver_per_gram)}/gram`;
-                }
-                
-                // Update MCX Header with source
-                const mcxHeaderEl = document.getElementById('mcx-header');
-                if (mcxHeaderEl && mcxData && mcxData.source) {
-                  mcxHeaderEl.textContent = `IBJA Spot Prices (${mcxData.source})`;
-                }
-                // ========================================
-
-                    // Hide loading spinner
-                const loadingSpinner = document.getElementById('loading-spinner');
-                if (loadingSpinner) {
-                  loadingSpinner.style.display = 'none';
-                }
-                
-                // Show sections
-                const goldSection = document.getElementById('gold-section');
-                const silverSection = document.getElementById('silver-section');
-                if (goldSection) goldSection.style.display = 'block';
-                if (silverSection) silverSection.style.display = 'block';
-
-            } catch (error) {
-                console.error('❌ Error loading data:', error);
-                updateStatus('Failed to load data from GitHub', 'error');
-                showError('Failed to load data. Check GitHub username/repo in JavaScript.');
+        // Create lookup map for static data
+        const staticMap = {};
+        staticData.forEach(row => {
+            if (row.symbol) {
+                staticMap[row.symbol.trim()] = row;
             }
+        });
+
+        // Merge ETF data with static data
+        const mergedETFs = etfData.map(etf => {
+            const staticInfo = staticMap[etf.symbol] || {};
+            return { ...etf, ...staticInfo };
+        });
+
+        // Separate by type
+        const goldETFs = mergedETFs.filter(e => e.type && e.type.toLowerCase() === 'gold');
+        const silverETFs = mergedETFs.filter(e => e.type && e.type.toLowerCase() === 'silver');
+
+        // Build data object in the SAME format as /api/etfs
+        const data = {
+            gold_etfs: goldETFs,
+            silver_etfs: silverETFs,
+            mcx_spot_prices: mcxJson,
+            timestamp: new Date().toISOString(),
+            alerts: [] // No alerts from GitHub data
+        };
+
+        console.log(`✅ Loaded ${goldETFs.length} gold + ${silverETFs.length} silver ETFs`);
+
+        // Store and render (your existing functions will handle this)
+        currentData = data;
+        renderETFs(data);
+        fetchAndUpdateTime();
+        // Update MCX prices (your existing code)
+        const mcxData = data.mcx_spot_prices || {};
+        const goldElement = document.getElementById('mcx-gold');
+        const silverElement = document.getElementById('mcx-silver');
+        
+        if (goldElement && mcxData.gold_per_gram) {
+            goldElement.textContent = `₹${mcxData.gold_per_gram.toFixed(2)}/gram`;
         }
 
-        // ============================================================================
-        // UI UPDATE FUNCTIONS (keeping all yours)
-        // ============================================================================
-
-        function updateStatus(message, type) {
-            const statusEl = document.getElementById('status-message');
-            if (statusEl) {
-                statusEl.textContent = message;
-                statusEl.className = 'status-message ' + type;
-            }
+        if (silverElement && mcxData.silver_per_gram) {
+            silverElement.textContent = `₹${mcxData.silver_per_gram.toFixed(2)}/gram`;
         }
 
-        function showError(message) {
-            const goldContainer = document.getElementById('gold-etfs');
-            if (goldContainer) {
-                goldContainer.innerHTML = `
-                    <div class="error-card">
-                        <h3>❌ Error</h3>
-                        <p>${message}</p>
-                        <p><strong>Configuration needed:</strong></p>
-                        <ol>
-                            <li>Edit lines 6-7 in the &lt;script&gt; section</li>
-                            <li>Set GITHUB_USERNAME to your username</li>
-                            <li>Set REPO_NAME to your repository name</li>
-                        </ol>
+        // Update MCX header
+        const headerElement = document.getElementById('mcx-header');
+        if (headerElement && mcxData.timestamp_display) {
+            let source_label = mcxData.source === 'MCX_Spot' ? 'MCX Spot Prices' : 'IBJA Spot Prices';
+            headerElement.textContent = `${source_label} (As of ${mcxData.timestamp_display})`;
+        }
+
+    } catch (error) {
+        console.error('Error loading data from GitHub:', error);
+        showError();
+    }
+}
+
+
+function showNoData() {
+    document.getElementById('content').innerHTML = `
+        <div class="loading">
+            <div class="loading-text">No data available. Click "Refresh Data" to scrape ETFs.</div>
+        </div>
+    `;
+    document.getElementById('last-update').textContent = 'No data';
+    document.getElementById('total-etfs').textContent = '0';
+}
+
+function showError() {
+    document.getElementById('content').innerHTML = `
+        <div class="loading">
+            <div class="loading-text" style="color: #ef4444;">Error loading data. Please try refreshing.</div>
+        </div>
+    `;
+}
+
+// ============================================================================
+// ETF RENDERING
+// ============================================================================
+
+function renderETFs(data) {
+    let html = '';
+
+    // Gold ETFs Section
+    if (data.gold_etfs && data.gold_etfs.length > 0) {
+        html += renderSection('gold', data.gold_etfs, '💰 Gold ETFs');
+    }
+
+    // Silver ETFs Section
+    if (data.silver_etfs && data.silver_etfs.length > 0) {
+        html += renderSection('silver', data.silver_etfs, '🥈 Silver ETFs');
+    }
+
+    document.getElementById('content').innerHTML = html;
+}
+
+function renderSection(type, etfs, title) {
+    const sortedETFs = sortETFs([...etfs], type === 'gold' ? goldSortCriteria : silverSortCriteria);
+
+    return `
+        <div class="section-header ${type}" onclick="toggleSection('${type}')">
+            <div class="section-title">
+                <span id="${type}-icon" class="collapse-icon">▼</span>
+                <span>${title} (${etfs.length})</span>
+            </div>
+            <div class="section-controls" onclick="event.stopPropagation()">
+                <select class="sort-dropdown" onchange="changeSort('${type}', this.value)">
+                    <option value="discount" selected>Highest Discount</option>
+                    <option value="premium">Highest Premium</option>
+                    <option value="volume">Highest Volume</option>
+                    <option value="delivery">Highest Delivery %</option>
+                    <option value="gain">Biggest Gain</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="etf-grid" id="${type}-container">
+            ${sortedETFs.map(etf => createCard(etf)).join('')}
+        </div>
+    `;
+}
+
+function createCard(etf) {
+    const discount = parseFloat(etf.discount) || 0;
+    const discountClass = discount > 0 ? 'positive' : 'negative';
+    const discountLabel = discount > 0 ? 'Premium' : 'Discount';
+
+    const change = parseFloat(etf.changePercent) || 0;
+    const changeClass = change >= 0 ? 'gain' : 'loss';
+
+    // Calculate distance from 52-week high
+    const week52High = parseFloat(etf.week52High) || 0;
+    const currentPrice = parseFloat(etf.price) || 0;
+    let dist52Text = 'N/A';
+    let dist52Class;
+
+    if (week52High > 0 && currentPrice > 0) {
+        const dist52 = ((currentPrice - week52High) / week52High) * 100;
+        if (dist52 >= 0) {
+            dist52Text = `+${dist52.toFixed(1)}% from 52W High`;
+            dist52Class = 'high-above';
+        } else if (dist52 >= -10) {
+            dist52Text = `${dist52.toFixed(1)}% from 52W High`;
+            dist52Class = 'high-near';
+        } else {
+            dist52Text = `${dist52.toFixed(1)}% from 52W High`;
+            dist52Class = 'high-far';
+        }
+    } else {
+        dist52Text = 'N/A';
+        dist52Class = 'high-na';
+    }
+
+    // Get MCX/IBJA comparison data
+    const effectivePrice = etf.effective_price_per_gram != null ? 
+        parseFloat(etf.effective_price_per_gram).toFixed(2) : 'N/A';
+    const ibjaSpot = etf.mcx_spot_per_gram != null ? 
+        parseFloat(etf.mcx_spot_per_gram).toFixed(2) : 'N/A';
+    const vsIbja = etf.discount_vs_mcx != null ? 
+        parseFloat(etf.discount_vs_mcx) : null;
+
+    // Format vs IBJA with color
+    let vsIbjaText = 'N/A';
+    let vsIbjaClass = '';
+    if (vsIbja !== null) {
+        vsIbjaText = `${vsIbja >= 0 ? '+' : ''}${vsIbja.toFixed(2)}%`;
+        vsIbjaClass = vsIbja >= 0 ? 'positive' : 'negative';
+    }
+
+    // Volume and delivery
+    const volumeLakhs = etf.volume ? (parseFloat(etf.volume) / 100000).toFixed(2) : '0.00';
+    const delivery = etf.deliveryPercent ? parseFloat(etf.deliveryPercent).toFixed(1) : '0.0';
+
+    return `
+        <div class="etf-card" id="card-${etf.symbol}" onclick="expandCard('${etf.symbol}')">
+            <div class="etf-compact">
+                <!-- Row 1: ETF Name -->
+                <div class="etf-name">${etf.name}</div>
+
+                <!-- Row 2: Symbol -->
+                <div class="etf-symbol">${etf.symbol}</div>
+
+                <!-- Row 3: Price and Change -->
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0;">
+                    <div class="etf-price">₹${etf.price}</div>
+                    <div class="etf-change ${changeClass}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                </div>
+
+                <!-- Row 4: Premium/Discount -->
+                <div class="etf-discount ${discountClass}" style="margin: 8px 0;">
+                    ${discountLabel}: ${Math.abs(discount).toFixed(2)}%
+                </div>
+
+                <!-- Row 5: 52W High Distance -->
+                <div class="etf-52w ${dist52Class}" style="margin: 8px 0;">
+                    ${dist52Text}
+                </div>
+
+                <!-- Row 6: Effective Price and IBJA Comparison (2-column grid) -->
+                <div class="etf-mcx-grid">
+                    <div class="mcx-item">
+                        <span class="mcx-label">Effective:</span>
+                        <span class="mcx-value">₹${effectivePrice}/g</span>
                     </div>
-                `;
-            }
-        }
-
-        function showNoData(containerId, type) {
-            const container = document.getElementById(containerId);
-            if (container) {
-                container.innerHTML = `<div class="no-data">No ${type} ETFs available</div>`;
-            }
-        }
-
-        // ============================================================================
-        // SORTING & FILTERING (keeping all yours)
-        // ============================================================================
-
-        function sortETFs(etfs, sortBy) {
-            const sorted = [...etfs];
-
-            switch(sortBy) {
-                case 'discount':
-                    sorted.sort((a, b) => parseFloat(b.discount || 0) - parseFloat(a.discount || 0));
-                    break;
-                case 'premium':
-                    sorted.sort((a, b) => parseFloat(a.discount || 0) - parseFloat(b.discount || 0));
-                    break;
-                case 'volume':
-                    sorted.sort((a, b) => parseFloat(b.volume || 0) - parseFloat(a.volume || 0));
-                    break;
-                case 'delivery':
-                    sorted.sort((a, b) => parseFloat(b.deliveryPercent || 0) - parseFloat(a.deliveryPercent || 0));
-                    break;
-                case 'gain':
-                    sorted.sort((a, b) => parseFloat(b.changePercent || 0) - parseFloat(a.changePercent || 0));
-                    break;
-                default:
-                    sorted.sort((a, b) => parseFloat(b.discount || 0) - parseFloat(a.discount || 0));
-            }
-
-            return sorted;
-        }
-
-        function changeSort(sortBy) {
-            currentSort = sortBy;
-            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            renderSection();
-        }
-
-        function changeFilter(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            renderSection();
-        }
-
-        // ============================================================================
-        // RENDERING (keeping all your card design)
-        // ============================================================================
-
-        function renderSection() {
-            // Apply filters
-            let goldToShow = currentFilter === 'silver' ? [] : goldETFs;
-            let silverToShow = currentFilter === 'gold' ? [] : silverETFs;
-
-            // Sort
-            goldToShow = sortETFs(goldToShow, currentSort);
-            silverToShow = sortETFs(silverToShow, currentSort);
-
-            // Render
-            renderETFs('gold-etfs', goldToShow, 'gold');
-            renderETFs('silver-etfs', silverToShow, 'silver');
-
-            // Update MCX prices
-            updateMCXDisplay();
-        }
-
-        function updateMCXDisplay() {
-            if (!mcxData) return;
-
-            const goldSpot = document.getElementById('gold-spot');
-            const silverSpot = document.getElementById('silver-spot');
-            const mcxSource = document.getElementById('mcx-source');
-
-            if (goldSpot) goldSpot.textContent = formatCurrency(mcxData.gold_per_gram);
-            if (silverSpot) silverSpot.textContent = formatCurrency(mcxData.silver_per_gram);
-            if (mcxSource) mcxSource.textContent = mcxData.source || 'MCX';
-        }
-
-        function renderETFs(containerId, etfs, type) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            if (etfs.length === 0) {
-                showNoData(containerId, type);
-                return;
-            }
-
-            container.innerHTML = etfs.map(etf => createCard(etf, type)).join('');
-        }
-
-        function createCard(etf, type) {
-            const isExpanded = expandedCards.has(etf.symbol);
-            const changeClass = parseFloat(etf.changePercent) >= 0 ? 'positive' : 'negative';
-            const discountClass = parseFloat(etf.discount) > 0 ? 'positive' : 'negative';
-
-            return `
-                <div class="etf-card ${type}" id="card-${etf.symbol}">
-                    <div class="etf-header">
-                        <div>
-                            <div class="etf-name">${etf.name}</div>
-                            <div class="etf-symbol">${etf.symbol}</div>
-                        </div>
-                        <span class="status-badge ${etf.status || 'cached'}">
-                            ${(etf.status || 'CACHED').toUpperCase()}
-                        </span>
-                    </div>
-
-                    <div class="etf-stats-row">
-                        <div class="etf-price">
-                            ${formatCurrency(etf.price)}
-                            <span class="etf-change ${changeClass}">
-                                ${formatPercent(etf.changePercent)}
-                            </span>
-                        </div>
-                        <div class="etf-discount ${discountClass}">
-                            ${formatPercent(etf.discount)}
-                        </div>
-                    </div>
-
-                    <div class="etf-compact">
-                        <div class="etf-stats-row">
-                            <span><strong>NAV:</strong> ${formatCurrency(etf.inav)}</span>
-                            <span><strong>Vol:</strong> ${formatNumber(etf.volume)}</span>
-                        </div>
-                        <div class="etf-stats-row">
-                            <span><strong>vs MCX:</strong> <span class="${parseFloat(etf.discount_vs_mcx) > 0 ? 'positive' : 'negative'}">${formatPercent(etf.discount_vs_mcx)}</span></span>
-                            <span><strong>Delivery:</strong> ${formatPercent(etf.deliveryPercent)}</span>
-                        </div>
-                    </div>
-
-                    ${isExpanded ? `
-                    <div class="etf-expanded">
-                        <div class="etf-mcx-grid">
-                            <div><strong>Effective ₹/g:</strong> ${formatCurrency(etf.effective_price_per_gram)}</div>
-                            <div><strong>vs IBJA:</strong> <span class="${parseFloat(etf.discount_vs_ibja) > 0 ? 'positive' : 'negative'}">${formatPercent(etf.discount_vs_ibja)}</span></div>
-                        </div>
-                        <div class="etf-grid">
-                            <div><strong>Day High:</strong> ${formatCurrency(etf.dayHigh)}</div>
-                            <div><strong>Day Low:</strong> ${formatCurrency(etf.dayLow)}</div>
-                            <div><strong>Open:</strong> ${formatCurrency(etf.open)}</div>
-                            <div><strong>Prev Close:</strong> ${formatCurrency(etf.prevClose)}</div>
-                            <div><strong>VWAP:</strong> ${formatCurrency(etf.vwap)}</div>
-                            <div><strong>Total Traded:</strong> ${formatCurrency(etf.totalTradedValue)}</div>
-                        </div>
-                        <div class="etf-52w">
-                            <strong>52W High:</strong> ${formatCurrency(etf.week52High)}
-                            <span class="${parseFloat(etf.pctBelow52WHigh) < -10 ? 'negative' : ''}">(${formatPercent(etf.pctBelow52WHigh)})</span>
-                        </div>
-                    </div>
-                    ` : ''}
-
-                    <div class="etf-actions">
-                        <button onclick="expandCard('${etf.symbol}')" class="btn btn-secondary">
-                            ${isExpanded ? '▲ Hide Details' : '▼ Show Details'}
-                        </button>
-                        <button onclick="openNSE('${etf.symbol}')" class="btn btn-primary">
-                            View on NSE →
-                        </button>
+                    <div class="mcx-item">
+                        <span class="mcx-label">IBJA:</span>
+                        <span class="mcx-value">₹${ibjaSpot}/g</span>
                     </div>
                 </div>
-            `;
-        }
 
-        // ============================================================================
-        // INTERACTION FUNCTIONS (keeping all yours)
-        // ============================================================================
+                <!-- Row 7: vs IBJA (full width, centered) -->
+                <div class="vs-ibja-row ${vsIbjaClass}">
+                    vs IBJA: ${vsIbjaText}
+                </div>
 
-        function expandCard(symbol) {
-            if (expandedCards.has(symbol)) {
-                expandedCards.delete(symbol);
-            } else {
-                expandedCards.add(symbol);
-            }
-            renderSection();
-        }
+                <!-- Row 8: Volume and Delivery (2-column) -->
+                <div class="etf-stats-row">
+                    <span>Vol: ${volumeLakhs}M</span>
+                    <span>Del%: ${delivery}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
-        function openNSE(symbol) {
-            window.open(`https://www.nseindia.com/get-quotes/equity?symbol=${symbol}`, '_blank');
-        }
 
-        function toggleSection(sectionId) {
-            const section = document.getElementById(sectionId);
-            const button = event.target;
+// ============================================================================
+// CARD EXPANSION
+// ============================================================================
 
-            if (section.style.display === 'none') {
-                section.style.display = 'grid';
-                button.textContent = button.textContent.replace('▼', '▲');
-            } else {
-                section.style.display = 'none';
-                button.textContent = button.textContent.replace('▲', '▼');
-            }
-        }
+function expandCard(symbol) {
+    // Find ETF data
+    const allETFs = [
+        ...(currentData.gold_etfs || []),
+        ...(currentData.silver_etfs || [])
+    ];
+    const etf = allETFs.find(e => e.symbol === symbol);
+
+    if (!etf) {
+        console.error('ETF not found:', symbol);
+        return;
+    }
+
+    // ============================================================
+    // ADD THIS: Check if data is LIVE or CACHED
+    // ============================================================
+    const isLive = currentData.timestamp && 
+                   (Date.now() - new Date(currentData.timestamp).getTime()) < 120000; // 2 minutes
+    
+    const dataStatus = isLive ? 
+        '<span class="modal-badge" style="background: #10b981; color: white;">🔴 LIVE</span>' :
+        '<span class="modal-badge" style="background: #e0e0e0;">📦 CACHED</span>';
+    // ============================================================
+
+    // Build modal content with CORRECT field names
+    const change = parseFloat(etf.changePercent) || 0;
+    const isPositive = change >= 0;
+    const changeClass = isPositive ? 'positive' : 'negative';
+    const changeSymbol = isPositive ? '▲' : '▼';
+    const discount = parseFloat(etf.discount) || 0;
+
+    const modalHTML = `
+        <div class="modal-header">
+            <div class="modal-symbol">${etf.symbol}</div>
+            <div class="modal-name">${etf.name}</div>
+            <span class="modal-badge ${etf.type || 'gold'}">${(etf.type || 'GOLD').toUpperCase()}</span>
+            ${dataStatus}
+        </div>
+
+        <div class="modal-price">₹${etf.price}</div>
+        <div class="modal-change ${changeClass}">
+            ${changeSymbol} ${etf.changePercent}%
+        </div>
+
+        <div class="modal-discount">
+            <div class="modal-discount-label">Classification</div>
+            <div class="modal-discount-value">
+                ${discount >= 0 ? 
+                    Math.abs(discount).toFixed(2) + '% PREMIUM' : 
+                    Math.abs(discount).toFixed(2) + '% DISCOUNT'}
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <div class="modal-section-title">📊 Current Trading Data</div>
+            <div class="modal-grid">
+                <div class="modal-field">
+                    <div class="modal-field-label">Current Price (LTP)</div>
+                    <div class="modal-field-value">₹${etf.price}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">iNAV</div>
+                    <div class="modal-field-value">₹${etf.inav || 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">Previous Close</div>
+                    <div class="modal-field-value">₹${etf.prevClose || 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">Change</div>
+                    <div class="modal-field-value">${etf.changePercent}%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <div class="modal-section-title">📈 Intraday Range</div>
+            <div class="modal-grid">
+                <div class="modal-field">
+                    <div class="modal-field-label">Open</div>
+                    <div class="modal-field-value">₹${etf.open || 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">Day High</div>
+                    <div class="modal-field-value">₹${etf.dayHigh || 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">Day Low</div>
+                    <div class="modal-field-value">₹${etf.dayLow || 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">VWAP</div>
+                    <div class="modal-field-value">₹${etf.vwap || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <div class="modal-section-title">💹 Volume & Activity</div>
+            <div class="modal-grid">
+                <div class="modal-field">
+                    <div class="modal-field-label">Volume</div>
+                    <div class="modal-field-value">${(parseFloat(etf.volume || 0) / 100000).toFixed(2)} L</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">Delivery %</div>
+                    <div class="modal-field-value">${etf.deliveryPercent || 'N/A'}%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <div class="modal-section-title">📊 52-Week Range</div>
+            <div class="modal-grid">
+                <div class="modal-field">
+                    <div class="modal-field-label">52-Week High</div>
+                    <div class="modal-field-value">₹${etf.week52High || 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">52-Week High Date</div>
+                    <div class="modal-field-value">${etf.week52HighDate || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+        
+         <div class="modal-section">
+            <div class="modal-section-title">🪙 IBJA Comparison</div>
+            <div class="modal-grid">
+                <div class="modal-field">
+                    <div class="modal-field-label">Effective Price/g</div>
+                    <div class="modal-field-value">₹${etf.effective_price_per_gram != null ? parseFloat(etf.effective_price_per_gram).toFixed(2) : 'N/A'}</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">MCX Spot Price</div>
+                    <div class="modal-field-value">₹${etf.mcx_spot_per_gram != null ? parseFloat(etf.mcx_spot_per_gram).toFixed(2) : 'N/A'}/g</div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-field-label">vs IBJA</div>
+                    <div class="modal-field-value" style="color: ${etf.discount_vs_mcx != null && parseFloat(etf.discount_vs_mcx) > 0 ? '#ef4444' : '#10b981'};">
+                        ${etf.discount_vs_mcx != null ? parseFloat(etf.discount_vs_mcx).toFixed(2) + '%' : 'N/A'}
+                        ${etf.discount_vs_mcx != null && parseFloat(etf.discount_vs_mcx) > 0 ? ' (Premium)' : etf.discount_vs_mcx != null ? ' (Discount)' : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-primary" onclick="window.open('https://www.nseindia.com/get-quotes/equity?symbol=${etf.symbol}', '_blank')">
+                View on NSE →
+            </button>
+            <button class="modal-btn modal-btn-secondary" onclick="closeModal()">
+                Close
+            </button>
+        </div>
+    `;
+
+    // Insert content and show modal
+    document.getElementById('modalContent').innerHTML = modalHTML;
+    document.getElementById('etfModal').classList.add('active');
+
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+}
+
+
+function closeModal(event) {
+    // Only close if clicking overlay (not card content)
+    if (event && event.target.className !== 'modal-overlay') {
+        return;
+    }
+
+    document.getElementById('etfModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+
+// ============================================================================
+// SECTION COLLAPSE/EXPAND
+// ============================================================================
+
+function toggleSection(section) {
+    const container = document.getElementById(section + '-container');
+    const icon = document.getElementById(section + '-icon');
+
+    if (container.style.display === 'none') {
+        container.style.display = 'grid';
+        icon.textContent = '▼';
+    } else {
+        container.style.display = 'none';
+        icon.textContent = '►';
+    }
+}
+
+// ============================================================================
+// SORTING
+// ============================================================================
+
+function changeSort(section, criteria) {
+    console.log(`[Sort] Changing ${section} to ${criteria}`);
+    
+    // ============================================================
+    // FIX #1: Use CORRECT variable names
+    // ============================================================
+    if (section === 'gold') {
+        goldSortCriteria = criteria;  // ✅ FIXED (was: goldSort)
+    } else {
+        silverSortCriteria = criteria;  // ✅ FIXED (was: silverSort)
+    }
+    
+    // ============================================================
+    // FIX #2: Re-render the section properly
+    // ============================================================
+    if (!currentData) {
+        console.warn('[Sort] No data available yet');
+        return;
+    }
+    
+    // Get the ETFs for this section
+    const etfs = section === 'gold' ? currentData.gold_etfs : currentData.silver_etfs;
+    
+    // Get the container
+    const container = document.getElementById(section + '-container');
+    
+    if (!container) {
+        console.error(`[Sort] Container not found: ${section}-container`);
+        return;
+    }
+    
+    if (!etfs || etfs.length === 0) {
+        console.warn(`[Sort] No ETFs found for ${section}`);
+        return;
+    }
+    
+    // Sort the ETFs
+    const sortedETFs = sortETFs([...etfs], criteria);
+    
+    // Re-render the cards
+    container.innerHTML = sortedETFs.map(etf => createCard(etf)).join('');
+    
+    console.log(`✅ [Sort] ${section} sorted by ${criteria} (${sortedETFs.length} ETFs)`);
+}
+
+
+function sortETFs(etfs, criteria) {
+    switch(criteria) {
+        case 'discount':
+            return etfs.sort((a,b) => parseFloat(a.discount || 0) - parseFloat(b.discount || 0));
+        case 'premium':
+            return etfs.sort((a,b) => parseFloat(b.discount || 0) - parseFloat(a.discount || 0));
+        case 'volume':
+            return etfs.sort((a,b) => parseFloat(b.volume || 0) - parseFloat(a.volume || 0));
+        case 'delivery':
+            return etfs.sort((a,b) => parseFloat(b.deliveryPercent || 0) - parseFloat(a.deliveryPercent || 0));
+        case 'gain':
+            return etfs.sort((a,b) => parseFloat(b.changePercent || 0) - parseFloat(a.changePercent || 0));
+        default:
+            return etfs;
+    }
+}
+
+// ============================================================================
+// REFRESH DATA
+// ============================================================================
 
         async function refreshData() {
             const btn = event.target;
@@ -1246,6 +1414,10 @@
         }
 
         function downloadCSV() {
+                const allETFs = [
+        ...(currentData.gold_etfs || []),
+        ...(currentData.silver_etfs || [])
+    ];
             if (allETFs.length === 0) {
                 alert('No data to download');
                 return;
@@ -1263,18 +1435,37 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+// ============================================================================
+// UTILITIES
+// ============================================================================
 
-        // ============================================================================
-        // INITIALIZATION
-        // ============================================================================
+function openNSE(symbol) {
+    window.open('https://www.nseindia.com/get-quotes/equity?symbol=' + symbol, '_blank');
+}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
+async function fetchAndUpdateTime() {
+    try {
+        const timestamp = Date.now();
+        const time2 = await fetch(`https://raw.githubusercontent.com/abhishekkumar9807/etf-tracker/refs/heads/main/data/last_updated.txt?t=${timestamp}`)
+            .then(r => r.text())
+            .catch(() => new Date().toLocaleString());
+        
+        console.log('Fetched timestamp:', time2);
+        
+        // ✅ DIRECTLY display the timestamp without parsing
+        document.getElementById('last-update').textContent = time2.trim();
+        
+        // Update ETF count separately
+        const totalETFs = (currentData?.gold_etfs || []).length + (currentData?.silver_etfs || []).length;
+        document.getElementById('total-etfs').textContent = totalETFs;
+        
+    } catch (error) {
+        console.error('Error fetching timestamp:', error);
+    }
+}
 
-            // Auto-refresh every 3 minutes
-            setInterval(loadData, 3 * 60 * 1000);
-        });
-    </script></script>
+console.log("Frontend HTML loaded. JavaScript from PART 3 will be added.");
+</script>
 <div id="etfModal" class="modal-overlay" onclick="closeModal(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
         <button class="modal-close" onclick="closeModal()">&times;</button>
