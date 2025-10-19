@@ -1,0 +1,25 @@
+# ETF Tracker - GitHub Actions Requirements
+# Python dependencies for web scraping and data processing
+
+# ============================================================================
+# WEB SCRAPING
+# ============================================================================
+requests>=2.31.0          # HTTP requests for API calls
+beautifulsoup4>=4.12.0    # HTML parsing
+lxml>=4.9.0               # XML/HTML parser (faster than html.parser)
+
+# ============================================================================
+# BROWSER AUTOMATION
+# ============================================================================
+selenium>=4.15.0          # Browser automation for dynamic content
+
+# ============================================================================
+# DATA PROCESSING
+# ============================================================================
+pandas>=2.0.0             # CSV/DataFrame handling
+
+# ============================================================================
+# NO FLASK NEEDED - GitHub Actions doesn't need a server!
+# ============================================================================
+# Flask is NOT required for deployment
+# Papa Parse handles CSV on frontend
