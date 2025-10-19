@@ -13,6 +13,8 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Kolkata  # ← ADD THIS LINE!
     permissions:
       contents: write
 
