@@ -1,115 +1,72 @@
-#!/usr/bin/env python3
-"""
-GitHub Actions Scraper - Works with existing CSV+JSON format
-No changes needed to your scrapers!
-"""
-
 import sys
 import os
-from datetime import datetime
-from pathlib import Path
+import csv
+import json
+import logging
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+sys.path.append('.')
+from scrapers.etf_scraper_mcx import scrape_all_etfs_parallel
+
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def save_etf_cache(results):
+    """Save complete ETF data to etf_cache.csv"""
+    try:
+        gold_etfs = results.get('gold_etfs', [])      # ✅ FIXED: snake_case
+        silver_etfs = results.get('silver_etfs', [])  # ✅ FIXED: snake_case
+        all_etfs = gold_etfs + silver_etfs
+
+        if not all_etfs:
+            logger.warning("⚠️ No ETF data to save!")
+            return
+
+        os.makedirs('data', exist_ok=True)
+
+        fieldnames = set()
+        for etf in all_etfs:
+            fieldnames.update(etf.keys())
+        fieldnames = sorted(list(fieldnames))
+
+        with open('data/etf_cache.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_etfs)
+
+        logger.info(f"✅ Saved {len(all_etfs)} ETFs to data/etf_cache.csv")
+        logger.info(f"   Gold: {len(gold_etfs)}, Silver: {len(silver_etfs)}")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to save etf_cache.csv: {e}")
+
+def save_mcx_cache(results):
+    """Save MCX spot prices to mcx_cache.json"""
+    try:
+        mcx_prices = results.get('mcx_spot_prices', {})  # ✅ FIXED: snake_case
+
+        os.makedirs('data', exist_ok=True)
+
+        with open('data/mcx_cache.json', 'w') as f:
+            json.dump(mcx_prices, f, indent=2)
+
+        logger.info(f"✅ Saved MCX prices to data/mcx_cache.json")
+        logger.info(f"   Gold: ₹{mcx_prices.get('gold_per_gram', 0)}/g")
+        logger.info(f"   Silver: ₹{mcx_prices.get('silver_per_gram', 0)}/g")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to save mcx_cache.json: {e}")
 
 def main():
-    print("=" * 80)
-    print("ETF + MCX Scraper for GitHub Actions")
-    print("=" * 80)
-    print()
+    logger.info("⏳ Starting ETF scraper...")
+    results = scrape_all_etfs_parallel()
 
-    # Change to project root
-    os.chdir(project_root)
+    # etf_scraper_mcx.py already saved etf_static_cache.csv internally ✅
+    # Now save the files that app_fastapi_mcx.py expects:
+    save_etf_cache(results)   # ← Creates etf_cache.csv
+    save_mcx_cache(results)   # ← Creates mcx_cache.json
 
-    # Import scrapers (after changing directory)
-    from scrapers.mcx_scraper import get_mcx_spot_prices
-    from scrapers.etf_scraper_mcx import scrape_all_etfs_parallel
+    logger.info("✅ Done!")
 
-    # Create data directory
-    data_dir = Path('data')
-    data_dir.mkdir(exist_ok=True)
-
-    # ========================================================================
-    # STEP 1: Scrape MCX/IBJA Spot Prices
-    # ========================================================================
-    print("🏦 Scraping MCX/IBJA spot prices...")
-    try:
-        mcx_data = get_mcx_spot_prices()
-
-        if mcx_data and mcx_data.get('gold_per_gram', 0) > 0:
-            print(f"✅ Gold: ₹{mcx_data['gold_per_gram']:.2f}/g")
-            print(f"✅ Silver: ₹{mcx_data['silver_per_gram']:.2f}/g")
-            print(f"✅ Source: {mcx_data.get('source', 'Unknown')}")
-
-            # Your scraper already saves mcx_cache.json in project root
-            # Copy to data/ directory
-            import shutil
-            if Path('mcx_cache.json').exists():
-                shutil.copy('mcx_cache.json', data_dir / 'mcx_cache.json')
-                print(f"✅ Copied: mcx_cache.json → data/mcx_cache.json")
-        else:
-            print("⚠️ MCX scraping returned no data")
-
-    except Exception as e:
-        print(f"❌ MCX scraping failed: {e}")
-        import traceback
-        traceback.print_exc()
-
-    print()
-
-    # ========================================================================
-    # STEP 2: Scrape ETF Data
-    # ========================================================================
-    print("📊 Scraping ETF data...")
-    try:
-        etf_results = scrape_all_etfs_parallel()
-
-        if etf_results:
-            gold_count = len(etf_results.get('gold_etfs', []))
-            silver_count = len(etf_results.get('silver_etfs', []))
-
-            print(f"✅ Scraped {gold_count} gold ETFs")
-            print(f"✅ Scraped {silver_count} silver ETFs")
-
-            # Your scraper saves to etf_cache.csv + etf_static_cache.csv in project root
-            # Copy to data/ directory
-            import shutil
-            if Path('etf_cache.csv').exists():
-                shutil.copy('etf_cache.csv', data_dir / 'etf_cache.csv')
-                print(f"✅ Copied: etf_cache.csv → data/etf_cache.csv")
-
-            if Path('etf_static_cache.csv').exists():
-                shutil.copy('etf_static_cache.csv', data_dir / 'etf_static_cache.csv')
-                print(f"✅ Copied: etf_static_cache.csv → data/etf_static_cache.csv")
-        else:
-            print("⚠️ ETF scraping returned no data")
-
-    except Exception as e:
-        print(f"❌ ETF scraping failed: {e}")
-        import traceback
-        traceback.print_exc()
-
-    print()
-
-    # ========================================================================
-    # STEP 3: Update Timestamp
-    # ========================================================================
-    timestamp_file = data_dir / 'last_updated.txt'
-    timestamp_file.write_text(datetime.now().strftime('%Y-%m-%d %H:%M:%S IST'))
-    print(f"✅ Updated: data/last_updated.txt")
-
-    print()
-    print("=" * 80)
-    print("✅ Scraping complete!")
-    print("=" * 80)
-    print()
-
-    # Show what's in data/ directory
-    print("📂 Files in data/ directory:")
-    for file in sorted(data_dir.glob('*')):
-        size = file.stat().st_size
-        print(f"   {file.name} ({size:,} bytes)")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
