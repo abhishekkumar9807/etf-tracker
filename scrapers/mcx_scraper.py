@@ -49,7 +49,8 @@ def is_ibja_requests_only_window():
     now = datetime.now()
     hour = now.hour
     minute = now.minute
-
+    if now.weekday() >= 5:  # 0=Monday, 4=Friday
+        return False
     if (hour == 7 and minute >= 0) or (hour >= 8 and hour < 12) or (hour == 12 and minute < 30):
         return True
     return False
@@ -84,8 +85,8 @@ def is_dead_zone():
     now = datetime.now()
     hour = now.hour
     minute = now.minute
-
-    if hour == 12 and 30 <= minute < 40:
+    
+    if hour == 12 and 30 <= minute < 40 and now.weekday() < 5:
         return True
     return False
 
