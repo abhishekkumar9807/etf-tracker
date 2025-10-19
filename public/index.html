@@ -935,6 +935,57 @@
                 updateStatus(`✅ Loaded ${allETFs.length} ETFs successfully`, 'success');
 
                 console.log(`✅ Loaded ${goldETFs.length} gold + ${silverETFs.length} silver ETFs`);
+                // ========== UPDATE STATUS BAR ==========
+                // Update Last Updated
+                const lastUpdateEl = document.getElementById('last-update');
+                if (lastUpdateEl && lastUpdated) {
+                  try {
+                    const date = new Date(lastUpdated.trim());
+                    if (!isNaN(date.getTime())) {
+                      lastUpdateEl.textContent = date.toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                    }
+                  } catch (e) {
+                    lastUpdateEl.textContent = lastUpdated.trim();
+                  }
+                }
+                
+                // Update Total ETFs
+                const totalEtfsEl = document.getElementById('total-etfs');
+                if (totalEtfsEl) {
+                  totalEtfsEl.textContent = allETFs.length;
+                }
+                
+                // Update Scrape Count
+                const scrapeCountEl = document.getElementById('scrape-count');
+                if (scrapeCountEl) {
+                  scrapeCountEl.textContent = '1/50'; // Update if tracking actual scrapes
+                }
+                
+                // Update MCX/IBJA Gold Price
+                const mcxGoldEl = document.getElementById('mcx-gold');
+                if (mcxGoldEl && mcxData && mcxData.gold_per_gram) {
+                  mcxGoldEl.textContent = `₹${formatCurrency(mcxData.gold_per_gram)}/gram`;
+                }
+                
+                // Update MCX/IBJA Silver Price
+                const mcxSilverEl = document.getElementById('mcx-silver');
+                if (mcxSilverEl && mcxData && mcxData.silver_per_gram) {
+                  mcxSilverEl.textContent = `₹${formatCurrency(mcxData.silver_per_gram)}/gram`;
+                }
+                
+                // Update MCX Header with source
+                const mcxHeaderEl = document.getElementById('mcx-header');
+                if (mcxHeaderEl && mcxData && mcxData.source) {
+                  mcxHeaderEl.textContent = `IBJA Spot Prices (${mcxData.source})`;
+                }
+                // ========================================
+
                     // Hide loading spinner
                 const loadingSpinner = document.getElementById('loading-spinner');
                 if (loadingSpinner) {
