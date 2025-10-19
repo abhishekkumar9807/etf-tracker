@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏆 Ultimate ETF Tracker</title>
+    <style>
+        /* ===== GLOBAL STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        .status-bar {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        /* ===== CONTROLS ===== */
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+        }
+
+        /* ===== SECTION HEADERS ===== */
+        .section-header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+
+        .section-header:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .section-header.gold {
+            border-left: 5px solid #ffd700;
+        }
+
+        .section-header.silver {
+            border-left: 5px solid #c0c0c0;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .sort-dropdown {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 0.95em;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .sort-dropdown:hover {
+            background: #f8f9ff;
+        }
+
+        .collapse-icon {
+            font-size: 1.2em;
+            color: #667eea;
+            transition: transform 0.3s;
+        }
+
+        /* ===== ETF GRID ===== */
+        .etf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: start;  /* Align cards to top */
+        }
+
+
+        /* ===== ETF CARDS ===== */
+        /* ETF Card Container */
+        .etf-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .etf-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* ETF Name */
+        .etf-name {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        /* ETF Symbol */
+        .etf-symbol {
+            font-size: 0.85em;
+            color: #6b7280;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Price */
+        .etf-price {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        /* Change Percentage */
+        .etf-change {
+            font-size: 0.95em;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .etf-change.gain {
+            color: #065f46;
+            background: #d1fae5;
+        }
+
+        .etf-change.loss {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+
+        /* Premium/Discount Badge */
+        .etf-discount {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .etf-discount.positive {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #fbbf24;
+        }
+
+        .etf-discount.negative {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        /* 52W High Distance */
+        .etf-52w {
+            font-size: 0.85em;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .etf-52w.high-above {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .etf-52w.high-near {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .etf-52w.high-far {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .etf-52w.high-na {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        /* MCX/IBJA Grid (2 columns) */
+        .etf-mcx-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 12px 0;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .mcx-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .mcx-label {
+            font-size: 0.75em;
+            color: #6b7280;
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .mcx-value {
+            font-size: 0.95em;
+            color: #111827;
+            font-weight: 700;
+        }
+
+        /* vs IBJA Row (full width, prominent) */
+        .vs-ibja-row {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 700;
+            text-align: center;
+            border: 2px solid;
+        }
+
+        .vs-ibja-row.positive {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+            border-color: #f87171;
+        }
+
+        .vs-ibja-row.negative {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border-color: #34d399;
+        }
+
+        /* Volume and Delivery Stats Row */
+        .etf-stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: #f3f4f6;
+            border-radius: 6px;
+            font-size: 0.85em;
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .etf-price {
+                font-size: 1.3em;
+            }
+
+            .etf-name {
+                font-size: 1em;
+            }
+
+            .etf-mcx-grid {
+                gap: 6px;
+                padding: 8px;
+            }
+
+            .mcx-value {
+                font-size: 0.85em;
+            }
+        }
+
+
+ 
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 40px;
+    text-align: center;
+    color: #333;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: #e0e0e0;
+    transform: rotate(90deg);
+}
+
+.modal-content {
+    padding: 30px;
+}
+
+.modal-header {
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+.modal-symbol {
+    font-size: 32px;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.modal-name {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 16px;
+}
+
+.modal-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.modal-badge.gold {
+    background: #ffd700;
+    color: #333;
+}
+
+.modal-badge.silver {
+    background: #c0c0c0;
+    color: #333;
+}
+
+.modal-price {
+    font-size: 48px;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 20px 0;
+}
+
+.modal-change {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.modal-change.positive {
+    color: #10b981;
+}
+
+.modal-change.negative {
+    color: #ef4444;
+}
+
+.modal-section {
+    margin-bottom: 24px;
+}
+
+.modal-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.modal-field {
+    background: #f8f9ff;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid #667eea;
+}
+
+.modal-field-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.modal-field-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.modal-discount {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.modal-discount-label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.modal-discount-value {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 2px solid #e0e0e0;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.modal-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.modal-btn-secondary {
+    background: white;
+    color: #667eea;
+    border: 2px solid #667eea;
+}
+
+.modal-btn-secondary:hover {
+    background: #f8f9ff;
+}
+        /* ===== EXPANDED DETAILS ===== */
+        .etf-details {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .detail-section {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .detail-section h4 {
+            color: #667eea;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .detail-row span {
+            color: #666;
+        }
+
+        .detail-row b {
+            color: #333;
+        }
+
+        .detail-row b.high {
+            color: #22c55e;
+        }
+
+        .detail-row b.low {
+            color: #ef4444;
+        }
+
+        .nse-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .nse-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* ===== LOADING ===== */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .etf-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .etf-card.expanded {
+                grid-column: span 1;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🏆 Ultimate ETF Tracker</h1>
+            <div class="subtitle">Real-time Gold & Silver ETF Analysis with Complete NSE Data</div>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-label">Last Updated</div>
+                    <div class="status-value" id="last-update">Loading...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Total ETFs</div>
+                    <div class="status-value" id="total-etfs">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Scrapes Today</div>
+                    <div class="status-value" id="scrape-count">0/50</div>
+                </div>
+            </div>
+        </div>
+         <!-- MCX Spot Prices Section -->
+        <div class="mcx-prices" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+            <!--<h4 style="margin: 0 0 10px 0;">📊 IBJA Spot Prices</h4>-->
+            <h4 id="mcx-header" style="margin: 0;">IBJA Spot Prices (--)</h4>
+            <div style="display: flex; gap: 20px; justify-content: center;">
+                <div>
+                    <strong>Gold:</strong> <span id="mcx-gold" style="color: #667eea; font-weight: bold;">₹--/gram</span>
+                </div>
+                <div>
+                    <strong>Silver:</strong> <span id="mcx-silver" style="color: #667eea; font-weight: bold;">₹--/gram</span>
+                </div>
+            </div>
+        </div>
+        <!-- Alerts Section -->
+        <div class="alerts-section" id="alerts-section" style="margin-top: 15px; display: none; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h4 style="margin: 0 0 10px 0;">🚨 Active Alerts</h4>
+            <div id="alerts-container" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
+        
+        <!-- CONTROLS -->
+        <div class="controls">
+            <button class="btn btn-primary" id="refresh-btn" onclick="refreshData()">
+                🔄 Refresh Data
+            </button>
+            <button class="btn btn-secondary" id="download-btn" onclick="downloadCSV()">
+                📥 Download CSV
+            </button>
+        </div>
+
+        <!-- CONTENT AREA -->
+        <div id="content">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Loading ETF data...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript will be added in PART 3 -->
+    
+    <!-- Papa Parse Library for CSV Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
+<script>
+        // ============================================================================
+        // GITHUB CONFIGURATION - CHANGE THESE VALUES!
+        // ============================================================================
+
+        const GITHUB_USERNAME = 'abhishekkumar9807';  // ← CHANGE THIS!
+        const REPO_NAME = 'etf-tracker';          // ← CHANGE IF DIFFERENT!
+
+        const BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/data`;
+        const ETF_CSV_URL = `${BASE_URL}/etf_cache.csv`;
+        const STATIC_CSV_URL = `${BASE_URL}/etf_static_cache.csv`;
+        const MCX_JSON_URL = `${BASE_URL}/mcx_cache.json`;
+        const TIMESTAMP_URL = `${BASE_URL}/last_updated.txt`;
+
+        // ============================================================================
+        // STATE MANAGEMENT (keeping all your variables)
+        // ============================================================================
+        let allETFs = [];
+        let goldETFs = [];
+        let silverETFs = [];
+        let mcxData = {};
+        let currentSort = 'discount';
+        let currentFilter = 'all';
+        let expandedCards = new Set();
+
+        // ============================================================================
+        // UTILITY FUNCTIONS (keeping all yours)
+        // ============================================================================
+
+        function formatNumber(num) {
+            if (!num || isNaN(num)) return '0';
+            num = parseFloat(num);
+            if (num >= 10000000) return (num / 10000000).toFixed(2) + ' Cr';
+            if (num >= 100000) return (num / 100000).toFixed(2) + ' L';
+            if (num >= 1000) return (num / 1000).toFixed(2) + ' K';
+            return num.toFixed(2);
+        }
+
+        function formatCurrency(num) {
+            if (!num || isNaN(num)) return '₹0.00';
+            return '₹' + parseFloat(num).toFixed(2);
+        }
+
+        function formatPercent(num) {
+            if (!num || isNaN(num)) return '0.00%';
+            const val = parseFloat(num);
+            return (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+        }
+
+        // ============================================================================
+        // DATA LOADING FROM GITHUB
+        // ============================================================================
+
+        async function loadData() {
+            console.log('📥 Loading data from GitHub...');
+            updateStatus('Loading data from GitHub...', 'loading');
+
+            try {
+                const timestamp = Date.now();
+
+                // Fetch all data in parallel
+                const [etfCsvText, staticCsvText, mcxJson, lastUpdated] = await Promise.all([
+                    fetch(`${ETF_CSV_URL}?t=${timestamp}`).then(r => r.text()),
+                    fetch(`${STATIC_CSV_URL}?t=${timestamp}`).then(r => r.text()),
+                    fetch(`${MCX_JSON_URL}?t=${timestamp}`).then(r => r.json()),
+                    fetch(`${TIMESTAMP_URL}?t=${timestamp}`).then(r => r.text()).catch(() => 'Unknown')
+                ]);
+
+                // Parse CSV files using Papa Parse
+                const etfData = Papa.parse(etfCsvText, { header: true, skipEmptyLines: true }).data;
+                const staticData = Papa.parse(staticCsvText, { header: true, skipEmptyLines: true }).data;
+
+                // Merge static and dynamic data
+                const staticMap = {};
+                staticData.forEach(row => {
+                    staticMap[row.symbol] = row;
+                });
+
+                allETFs = etfData.map(etf => ({
+                    ...etf,
+                    ...staticMap[etf.symbol]
+                }));
+
+                // Separate gold and silver
+                goldETFs = allETFs.filter(etf => etf.type === 'gold');
+                silverETFs = allETFs.filter(etf => etf.type === 'silver');
+
+                mcxData = mcxJson;
+
+                // Update UI
+                renderSection();
+                updateStatus(`✅ Loaded ${allETFs.length} ETFs successfully`, 'success');
+
+                console.log(`✅ Loaded ${goldETFs.length} gold + ${silverETFs.length} silver ETFs`);
+
+            } catch (error) {
+                console.error('❌ Error loading data:', error);
+                updateStatus('Failed to load data from GitHub', 'error');
+                showError('Failed to load data. Check GitHub username/repo in JavaScript.');
+            }
+        }
+
+        // ============================================================================
+        // UI UPDATE FUNCTIONS (keeping all yours)
+        // ============================================================================
+
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status-message');
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.className = 'status-message ' + type;
+            }
+        }
+
+        function showError(message) {
+            const goldContainer = document.getElementById('gold-etfs');
+            if (goldContainer) {
+                goldContainer.innerHTML = `
+                    <div class="error-card">
+                        <h3>❌ Error</h3>
+                        <p>${message}</p>
+                        <p><strong>Configuration needed:</strong></p>
+                        <ol>
+                            <li>Edit lines 6-7 in the &lt;script&gt; section</li>
+                            <li>Set GITHUB_USERNAME to your username</li>
+                            <li>Set REPO_NAME to your repository name</li>
+                        </ol>
+                    </div>
+                `;
+            }
+        }
+
+        function showNoData(containerId, type) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = `<div class="no-data">No ${type} ETFs available</div>`;
+            }
+        }
+
+        // ============================================================================
+        // SORTING & FILTERING (keeping all yours)
+        // ============================================================================
+
+        function sortETFs(etfs, sortBy) {
+            const sorted = [...etfs];
+
+            switch(sortBy) {
+                case 'discount':
+                    sorted.sort((a, b) => parseFloat(b.discount || 0) - parseFloat(a.discount || 0));
+                    break;
+                case 'premium':
+                    sorted.sort((a, b) => parseFloat(a.discount || 0) - parseFloat(b.discount || 0));
+                    break;
+                case 'volume':
+                    sorted.sort((a, b) => parseFloat(b.volume || 0) - parseFloat(a.volume || 0));
+                    break;
+                case 'delivery':
+                    sorted.sort((a, b) => parseFloat(b.deliveryPercent || 0) - parseFloat(a.deliveryPercent || 0));
+                    break;
+                case 'gain':
+                    sorted.sort((a, b) => parseFloat(b.changePercent || 0) - parseFloat(a.changePercent || 0));
+                    break;
+                default:
+                    sorted.sort((a, b) => parseFloat(b.discount || 0) - parseFloat(a.discount || 0));
+            }
+
+            return sorted;
+        }
+
+        function changeSort(sortBy) {
+            currentSort = sortBy;
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderSection();
+        }
+
+        function changeFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderSection();
+        }
+
+        // ============================================================================
+        // RENDERING (keeping all your card design)
+        // ============================================================================
+
+        function renderSection() {
+            // Apply filters
+            let goldToShow = currentFilter === 'silver' ? [] : goldETFs;
+            let silverToShow = currentFilter === 'gold' ? [] : silverETFs;
+
+            // Sort
+            goldToShow = sortETFs(goldToShow, currentSort);
+            silverToShow = sortETFs(silverToShow, currentSort);
+
+            // Render
+            renderETFs('gold-etfs', goldToShow, 'gold');
+            renderETFs('silver-etfs', silverToShow, 'silver');
+
+            // Update MCX prices
+            updateMCXDisplay();
+        }
+
+        function updateMCXDisplay() {
+            if (!mcxData) return;
+
+            const goldSpot = document.getElementById('gold-spot');
+            const silverSpot = document.getElementById('silver-spot');
+            const mcxSource = document.getElementById('mcx-source');
+
+            if (goldSpot) goldSpot.textContent = formatCurrency(mcxData.gold_per_gram);
+            if (silverSpot) silverSpot.textContent = formatCurrency(mcxData.silver_per_gram);
+            if (mcxSource) mcxSource.textContent = mcxData.source || 'MCX';
+        }
+
+        function renderETFs(containerId, etfs, type) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (etfs.length === 0) {
+                showNoData(containerId, type);
+                return;
+            }
+
+            container.innerHTML = etfs.map(etf => createCard(etf, type)).join('');
+        }
+
+        function createCard(etf, type) {
+            const isExpanded = expandedCards.has(etf.symbol);
+            const changeClass = parseFloat(etf.changePercent) >= 0 ? 'positive' : 'negative';
+            const discountClass = parseFloat(etf.discount) > 0 ? 'positive' : 'negative';
+
+            return `
+                <div class="etf-card ${type}" id="card-${etf.symbol}">
+                    <div class="etf-header">
+                        <div>
+                            <div class="etf-name">${etf.name}</div>
+                            <div class="etf-symbol">${etf.symbol}</div>
+                        </div>
+                        <span class="status-badge ${etf.status || 'cached'}">
+                            ${(etf.status || 'CACHED').toUpperCase()}
+                        </span>
+                    </div>
+
+                    <div class="etf-stats-row">
+                        <div class="etf-price">
+                            ${formatCurrency(etf.price)}
+                            <span class="etf-change ${changeClass}">
+                                ${formatPercent(etf.changePercent)}
+                            </span>
+                        </div>
+                        <div class="etf-discount ${discountClass}">
+                            ${formatPercent(etf.discount)}
+                        </div>
+                    </div>
+
+                    <div class="etf-compact">
+                        <div class="etf-stats-row">
+                            <span><strong>NAV:</strong> ${formatCurrency(etf.inav)}</span>
+                            <span><strong>Vol:</strong> ${formatNumber(etf.volume)}</span>
+                        </div>
+                        <div class="etf-stats-row">
+                            <span><strong>vs MCX:</strong> <span class="${parseFloat(etf.discount_vs_mcx) > 0 ? 'positive' : 'negative'}">${formatPercent(etf.discount_vs_mcx)}</span></span>
+                            <span><strong>Delivery:</strong> ${formatPercent(etf.deliveryPercent)}</span>
+                        </div>
+                    </div>
+
+                    ${isExpanded ? `
+                    <div class="etf-expanded">
+                        <div class="etf-mcx-grid">
+                            <div><strong>Effective ₹/g:</strong> ${formatCurrency(etf.effective_price_per_gram)}</div>
+                            <div><strong>vs IBJA:</strong> <span class="${parseFloat(etf.discount_vs_ibja) > 0 ? 'positive' : 'negative'}">${formatPercent(etf.discount_vs_ibja)}</span></div>
+                        </div>
+                        <div class="etf-grid">
+                            <div><strong>Day High:</strong> ${formatCurrency(etf.dayHigh)}</div>
+                            <div><strong>Day Low:</strong> ${formatCurrency(etf.dayLow)}</div>
+                            <div><strong>Open:</strong> ${formatCurrency(etf.open)}</div>
+                            <div><strong>Prev Close:</strong> ${formatCurrency(etf.prevClose)}</div>
+                            <div><strong>VWAP:</strong> ${formatCurrency(etf.vwap)}</div>
+                            <div><strong>Total Traded:</strong> ${formatCurrency(etf.totalTradedValue)}</div>
+                        </div>
+                        <div class="etf-52w">
+                            <strong>52W High:</strong> ${formatCurrency(etf.week52High)}
+                            <span class="${parseFloat(etf.pctBelow52WHigh) < -10 ? 'negative' : ''}">(${formatPercent(etf.pctBelow52WHigh)})</span>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <div class="etf-actions">
+                        <button onclick="expandCard('${etf.symbol}')" class="btn btn-secondary">
+                            ${isExpanded ? '▲ Hide Details' : '▼ Show Details'}
+                        </button>
+                        <button onclick="openNSE('${etf.symbol}')" class="btn btn-primary">
+                            View on NSE →
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================================================
+        // INTERACTION FUNCTIONS (keeping all yours)
+        // ============================================================================
+
+        function expandCard(symbol) {
+            if (expandedCards.has(symbol)) {
+                expandedCards.delete(symbol);
+            } else {
+                expandedCards.add(symbol);
+            }
+            renderSection();
+        }
+
+        function openNSE(symbol) {
+            window.open(`https://www.nseindia.com/get-quotes/equity?symbol=${symbol}`, '_blank');
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const button = event.target;
+
+            if (section.style.display === 'none') {
+                section.style.display = 'grid';
+                button.textContent = button.textContent.replace('▼', '▲');
+            } else {
+                section.style.display = 'none';
+                button.textContent = button.textContent.replace('▲', '▼');
+            }
+        }
+
+        async function refreshData() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Refreshing...';
+
+            await loadData();
+
+            btn.disabled = false;
+            btn.textContent = '🔄 Refresh Data';
+        }
+
+        function downloadCSV() {
+            if (allETFs.length === 0) {
+                alert('No data to download');
+                return;
+            }
+
+            const headers = Object.keys(allETFs[0]).join(',');
+            const rows = allETFs.map(etf => Object.values(etf).join(',')).join('\n');
+            const csv = headers + '\n' + rows;
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `etf_data_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+
+            // Auto-refresh every 3 minutes
+            setInterval(loadData, 3 * 60 * 1000);
+        });
+    </script></script>
+<div id="etfModal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <div class="modal-content" id="modalContent">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
