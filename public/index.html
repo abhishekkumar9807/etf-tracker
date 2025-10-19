@@ -817,12 +817,25 @@
 
         <!-- CONTENT AREA -->
         <div id="content">
-            <div class="loading">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">Loading ETF data...</div>
-            </div>
-        </div>
-    </div>
+  <!-- Loading Spinner -->
+  <div class="loading" id="loading-spinner">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading ETF data...</div>
+  </div>
+  
+  <!-- Gold ETFs Container -->
+  <div class="etf-section" id="gold-section" style="display: none;">
+    <h2 class="section-title">🏆 Gold ETFs</h2>
+    <div id="gold-etfs" class="etf-grid"></div>
+  </div>
+  
+  <!-- Silver ETFs Container -->
+  <div class="etf-section" id="silver-section" style="display: none;">
+    <h2 class="section-title">🥈 Silver ETFs</h2>
+    <div id="silver-etfs" class="etf-grid"></div>
+  </div>
+</div>
+
 
     <!-- JavaScript will be added in PART 3 -->
     
@@ -922,6 +935,17 @@
                 updateStatus(`✅ Loaded ${allETFs.length} ETFs successfully`, 'success');
 
                 console.log(`✅ Loaded ${goldETFs.length} gold + ${silverETFs.length} silver ETFs`);
+                    // Hide loading spinner
+                const loadingSpinner = document.getElementById('loading-spinner');
+                if (loadingSpinner) {
+                  loadingSpinner.style.display = 'none';
+                }
+                
+                // Show sections
+                const goldSection = document.getElementById('gold-section');
+                const silverSection = document.getElementById('silver-section');
+                if (goldSection) goldSection.style.display = 'block';
+                if (silverSection) silverSection.style.display = 'block';
 
             } catch (error) {
                 console.error('❌ Error loading data:', error);
