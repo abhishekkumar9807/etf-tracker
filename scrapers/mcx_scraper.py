@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 # Cache file
 CACHE_FILE = 'mcx_cache.json'
-CACHE_VALIDITY_HOURS = 24
+CACHE_VALIDITY_HOURS = 2
 
 
 # ============================================================================
@@ -146,6 +146,32 @@ def load_cache():
         'cache_age_hours': None
     }
 
+def is_cache_fresh():
+    """Check if cache is valid (< 2 hours old)"""
+    try:
+        if not os.path.exists(CACHE_FILE):
+            return False
+        
+        with open(CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+        
+        cache_age = calculate_cache_age(cache.get('timestamp'))
+        
+        if cache_age is None:
+            return False
+        
+        is_fresh = cache_age < CACHE_VALIDITY_HOURS
+        
+        if is_fresh:
+            logger.info(f"✅ Cache is FRESH ({cache_age:.1f}h old)")
+        else:
+            logger.info(f"⏰ Cache is STALE ({cache_age:.1f}h old)")
+        
+        return is_fresh
+    
+    except Exception as e:
+        logger.error(f"❌ Cache freshness check failed: {str(e)}")
+        return False
 
 def save_cache(data):
     """Save FRESH data to cache (only called when scraping succeeds)"""
@@ -431,6 +457,12 @@ def get_mcx_spot_prices():
     Uses your proven stable code + adds smart time-window routing
     """
     logger.info(f"🕐 Current time: {datetime.now().strftime('%Y-%m-%d %I:%M %p IST')}")
+    # ✅ NEW: Check cache FIRST (before any scraping!)
+    if is_cache_fresh():
+        logger.info("📦 Returning fresh cache (no scraping needed)")
+        return load_cache()
+    
+    logger.info("🔄 Cache is stale or missing → Proceeding with scraping")
 
     # CASE 1: Dead zone (12:30 PM - 12:40 PM) → Load cache only
     if is_dead_zone():
