@@ -982,6 +982,6 @@ if __name__ == "__main__":
     
     # Print scraping results
     print(f"\nScraping Results:")
-    print(f"  Scraped: {results['successCount']}/{results['totalCount']} ETFs")
+    print(f"  Scraped: {results['success_count']}/{results['total_count']} ETFs")
     print(f"  Gold ETFs: {len(results['gold_etfs'])}")
     print(f"  Silver ETFs: {len(results['silver_etfs'])}")
