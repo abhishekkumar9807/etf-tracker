@@ -2,43 +2,48 @@ name: Scrape ETF Data
 
 on:
   schedule:
-    # Weekdays: Every 3 minutes from 9:15 AM - 6:30 PM IST (3:45-13:00 UTC)
-    - cron: '*/3 3-13 * * 1-5'
-
-    # Saturday: Once at 10:00 AM IST (4:30 UTC)
+    # Mon-Fri: 9:15 AM - 3:35 PM IST (every 3 minutes)
+    - cron: '45-59/3 3 * * 1-5'      # 9:15-9:57 AM IST (3:45-3:57 UTC)
+    - cron: '*/3 4-9 * * 1-5'        # 10:00 AM-3:27 PM IST (4:00-9:57 UTC)
+    - cron: '0,3 10 * * 1-5'         # 3:30-3:33 PM IST (10:00-10:03 UTC)
+    - cron: '0 13 * * 1-5'           # 6:30 PM IST (13:00 UTC) - EOD
+    
+    # Saturday: 10:00 AM IST
     - cron: '30 4 * * 6'
-
-  workflow_dispatch:  # Manual trigger anytime
+    
+    # Sunday: No runs
+  
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    
     env:
-      TZ: Asia/Kolkata  # ← ADD THIS LINE!
+      TZ: Asia/Kolkata
+    
     permissions:
       contents: write
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
+      
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
+        run: pip install -r requirements.txt
+      
       - name: Run scraper
-        run: |
-          python scrapers/run_scraper.py
-
+        run: python scrapers/run_scraper.py
+      
       - name: Commit generated files
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add data/
-          git commit -m "Update ETF data - $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git commit -m "Update ETF data - $(date +'%Y-%m-%d %H:%M:%S IST')" || echo "No changes"
           git push
