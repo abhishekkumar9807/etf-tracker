@@ -77,7 +77,7 @@ def save_static_cache(static_data_list):
             entry['timestamp'] = timestamp
         
         df = pd.DataFrame(static_data_list)
-        df.to_csv(STATIC_CACHE_FILE_Data, index=False)
+        df.to_csv(STATIC_CACHE_FILE_DATA, index=False)
         logger.info(f"💾 Saved {len(static_data_list)} ETFs to static cache")
         return True
     except Exception as e:
