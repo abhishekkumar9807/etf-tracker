@@ -81,10 +81,10 @@ def update_last_updated():
         os.makedirs('data', exist_ok=True)
         '''with open('data/last_updated.txt', 'w') as f:
             f.write(datetime.now().strftime('%Y-%m-%d %H:%M:%S IST'))'''
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
         with open('data/last_updated.txt', 'w') as f:
             f.write(timestamp)
-        logger.info("✅ Updated last_updated.txt")
+        logger.info(f"✓ Updated timestamp: {timestamp}")
     except Exception as e:
         logger.error(f"❌ Failed to update timestamp: {e}")
 
