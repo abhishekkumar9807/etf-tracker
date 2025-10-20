@@ -60,7 +60,7 @@ def save_mcx_cache(results):
     except Exception as e:
         logger.error(f"❌ Failed to save mcx_cache.json: {e}")
 
-def copy_static_cache():
+'''def copy_static_cache():
     """Copy etf_static_cache.csv from project root to data/ folder"""
     try:
         src = Path('etf_static_cache.csv')
@@ -74,7 +74,7 @@ def copy_static_cache():
             logger.warning("⚠️ etf_static_cache.csv not found in project root")
     except Exception as e:
         logger.error(f"❌ Failed to copy static cache: {e}")
-
+'''
 def update_last_updated():
     """Update last_updated.txt timestamp"""
     try:
@@ -97,7 +97,7 @@ def main():
     save_mcx_cache(results)      # ← Creates data/mcx_cache.json
 
     # Copy internal files to data/ folder (for consistency)
-    copy_static_cache()          # ← Copies etf_static_cache.csv to data/
+    #copy_static_cache()          # ← Copies etf_static_cache.csv to data/
     update_last_updated()        # ← Updates last_updated.txt
 
     logger.info("✅ Done!")
