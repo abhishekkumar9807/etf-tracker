@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Cache file
-CACHE_FILE = 'mcx_cache.json'
+CACHE_FILE = 'data/mcx_cache.json'
 CACHE_VALIDITY_HOURS = 2
 
 
