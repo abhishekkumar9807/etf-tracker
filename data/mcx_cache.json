@@ -1,8 +1,9 @@
 {
-  "gold_per_gram": 12982.8,
-  "silver_per_gram": 170.69,
-  "source": "MCX_Spot",
-  "timestamp": "2025-10-19T20:05:52.665485",
-  "timestamp_display": "2025-10-19 08:05 PM IST",
-  "cache_age_hours": 0
+  "gold_per_gram": 0,
+  "silver_per_gram": 0,
+  "source": "Fallback",
+  "timestamp": "2025-10-20T09:15:41.699979",
+  "timestamp_display": "2025-10-20 09:15 AM IST",
+  "note": "\u26a0\ufe0f No data available (cache missing)",
+  "cache_age_hours": null
 }
