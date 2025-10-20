@@ -39,16 +39,17 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 STATIC_CACHE_FILE = 'etf_static_cache.csv'
+STATIC_CACHE_FILE_DATA = 'data/etf_static_cache.csv'
 STATIC_CACHE_TTL = 4 * 60 * 60  # 4 hours in seconds
 
 def load_static_cache():
     """Load static data from cache file"""
     try:
-        if not os.path.exists(STATIC_CACHE_FILE):
+        if not os.path.exists(STATIC_CACHE_FILE_DATA):
             logger.info("📂 No static cache found")
             return {}
         
-        df = pd.read_csv(STATIC_CACHE_FILE)
+        df = pd.read_csv(STATIC_CACHE_FILE_DATA)
         
         if 'timestamp' in df.columns and len(df) > 0:
             cache_time = datetime.fromisoformat(df['timestamp'].iloc[0])
@@ -89,7 +90,7 @@ def should_refresh_static_cache(static_cache):
         return True
     
     try:
-        df = pd.read_csv(STATIC_CACHE_FILE)
+        df = pd.read_csv(STATIC_CACHE_FILE_DATA)
         if 'timestamp' in df.columns and len(df) > 0:
             cache_time = datetime.fromisoformat(df['timestamp'].iloc[0])
             age_seconds = (datetime.now() - cache_time).total_seconds()
