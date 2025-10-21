@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 sys.path.append('.')
-from scrapers.etf_scraper_mcx import scrape_all_etfs_parallel
+from scrapers.etf_scraper_mcx import scrape_all_etfs_sequential
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -90,7 +90,7 @@ def update_last_updated():
 
 def main():
     logger.info("⏳ Starting ETF scraper...")
-    results = scrape_all_etfs_parallel()
+    results = scrape_all_etfs_sequential()
 
     # Save files that app_fastapi_mcx.py expects
     save_etf_cache(results)      # ← Creates data/etf_cache.csv
