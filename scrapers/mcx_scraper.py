@@ -74,7 +74,7 @@ def is_mcx_active_window():
     hour = now.hour
     if now.weekday() >= 5:
         return True
-    if hour >= 17 or hour < 7:
+    if hour >= 14 or hour < 7:
         if now.weekday() < 5:  # 0=Monday, 4=Friday
             return True
     return False
@@ -208,7 +208,7 @@ def scrape_ibja_with_requests():
         response = requests.get(
             "https://www.ibjarates.com/",
             headers=headers,
-            timeout=15,
+            timeout=8,
             verify=False
         )
 
@@ -281,7 +281,7 @@ def scrape_ibja_with_selenium():
         driver.get("https://www.ibjarates.com/")
 
         # Wait for table to load
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 8).until(
             EC.presence_of_element_located((By.ID, "TodayRatesTableDataYes"))
         )
 
@@ -367,7 +367,7 @@ def scrape_mcx_official():
         logger.info("🔍 Scraping MCX Gold...")
         driver.get(url_gold)
         
-        WebDriverWait(driver, 15).until(
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
         time_module.sleep(7)
@@ -400,7 +400,7 @@ def scrape_mcx_official():
         logger.info("🔍 Scraping MCX Silver...")
         driver.get(url_silver)
         
-        WebDriverWait(driver, 15).until(
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
         # ✅ FIX #5: Use time_module (not time)
