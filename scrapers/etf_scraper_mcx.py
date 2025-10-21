@@ -24,6 +24,7 @@ from datetime import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
+from selenium.common.exceptions import StaleElementReferenceException
 try:
     from .mcx_scraper import get_mcx_spot_prices  # For package import
 except ImportError:
@@ -212,6 +213,8 @@ def scrape_sbi_inav(driver, symbol):
         logger.error(f"❌ SBI {symbol} scraping failed: {str(e)}")
         return 0.0
 
+
+
 def scrape_uti_inav(driver, symbol):
     """Scrape from UTI MF nav-dividend page"""
     try:
@@ -256,6 +259,7 @@ def scrape_uti_inav(driver, symbol):
     except Exception as e:
         logger.error(f"❌ UTI {symbol} scraping failed: {str(e)}")
         return 0.0
+
 
 def scrape_hdfc_inav(driver, symbol):
     """Scrape from HDFC MF website"""
@@ -303,6 +307,8 @@ def scrape_hdfc_inav(driver, symbol):
         logger.error(f"❌ HDFC {symbol} scraping failed: {str(e)}")
         return 0.0
 
+'''
+#original
 def scrape_etfjunction_inav(driver, symbol):
     """Scrape from ETF Junction DataTable"""
     try:
@@ -343,37 +349,95 @@ def scrape_etfjunction_inav(driver, symbol):
     except Exception as e:
         logger.error(f"❌ ETFJunction {symbol} scraping failed: {str(e)}")
         return 0.0
+'''
+
+
+def scrape_etfjunction_inav(driver, symbol, max_retries=3):
+    """Scrape from ETF Junction DataTable with stale element retry"""
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"📊 ETFJunction: Attempting to scrape {symbol}... (Attempt {attempt + 1}/{max_retries})")
+            driver.get("https://etfjunction.com/inav.php")
+
+            try:
+                WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.CLASS_NAME, "etftable_ab")))
+                table = driver.find_element(By.CLASS_NAME, "etftable_ab")
+                logger.info(f"📊 ETFJunction {symbol}: Table loaded successfully")
+            except TimeoutException:
+                logger.warning(f"⚠️ ETFJunction {symbol}: Table failed to load within 25s")
+                if attempt < max_retries - 1:
+                    time.sleep(2)  # Wait before retry
+                    continue
+                return 0.0
+
+            time.sleep(2)  # Wait for JavaScript to finish
+
+            try:
+                # ⭐ RE-FIND table on each iteration (prevents staleness)
+                table = driver.find_element(By.CLASS_NAME, "etftable_ab")
+                rows = table.find_elements(By.TAG_NAME, "tr")
+                logger.info(f"📊 ETFJunction {symbol}: Found {len(rows)} rows in table")
+
+                for row in rows:
+                    try:
+                        # ⭐ RE-FIND cells inside loop (critical for avoiding stale elements)
+                        cells = row.find_elements(By.TAG_NAME, "td")
+                        
+                        if len(cells) >= 4:
+                            exchange_symbol = cells[1].text.strip()
+                            
+                            if exchange_symbol == symbol:
+                                inav_text = cells[3].text.strip()
+                                inav = safe_float(inav_text)
+                                
+                                if inav > 0:
+                                    logger.info(f"📊 ETFJunction {symbol}: iNAV = ₹{inav}")
+                                    return inav
+                    
+                    except StaleElementReferenceException:
+                        # ⭐ If stale element in row loop, break and retry
+                        logger.warning(f"⚠️ ETFJunction {symbol}: Stale element in row, retrying... ({attempt + 1}/{max_retries})")
+                        break  # Break inner loop, will retry outer loop
+
+                # If we finished the loop without finding symbol
+                logger.warning(f"⚠️ ETFJunction {symbol}: Symbol not found in {len(rows)} rows")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue  # Try again
+                return 0.0
+                
+            except StaleElementReferenceException as e:
+                # ⭐ If stale element at table level, retry
+                logger.warning(f"⚠️ ETFJunction {symbol}: Table parsing failed (stale element) - Attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                logger.error(f"❌ ETFJunction {symbol}: Failed after {max_retries} attempts")
+                return 0.0
+            
+            except Exception as e:
+                logger.warning(f"⚠️ ETFJunction {symbol}: Table parsing failed - {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                return 0.0
+        
+        except Exception as e:
+            logger.error(f"❌ ETFJunction {symbol} scraping failed: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return 0.0
+    
+    # If all retries exhausted
+    logger.error(f"❌ ETFJunction {symbol}: All {max_retries} attempts failed")
+    return 0.0
 
 # ============================================================================
 # CHROME DRIVER SETUP
 # ============================================================================
-'''
-#Original
-def create_optimized_driver():
-    """Create headless Chrome driver with optimized settings"""
-    chrome_options = Options()
-    chrome_options.add_argument('--headless=new')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--disable-software-rasterizer')
-    chrome_options.add_argument('--disable-extensions')
-    chrome_options.add_argument('--log-level=3')
-    chrome_options.add_argument('--silent')
-    chrome_options.add_argument('--window-size=1920,1080')
-    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-    prefs = {'profile.default_content_setting_values': {'images': 2, 'javascript': 1}}
-    chrome_options.add_experimental_option('prefs', prefs)
-    chrome_options.page_load_strategy = 'eager'
-
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.set_page_load_timeout(15)
-    driver.implicitly_wait(2)
-
-    return driver
-'''
 def create_optimized_driver():
     """
     Create headless Chrome driver with optimized settings
@@ -454,167 +518,6 @@ def create_optimized_driver():
 # CORE SCRAPING FUNCTIONS
 # ============================================================================
 
-'''
-#original
-def scrape_etf_fast(driver, symbol, isin="", retry_count=0):
-    """
-    Scrape single ETF from NSE with AMC fallback
-    """
-    max_retries = 2
-
-    try:
-        url = f"https://www.nseindia.com/get-quotes/equity?symbol={symbol}"
-        driver.get(url)
-
-        try:
-            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, 'quoteLtp')))
-            time.sleep(2)
-        except TimeoutException:
-            if retry_count < max_retries:
-                time.sleep(2)
-                return scrape_etf_fast(driver, symbol, isin, retry_count + 1)
-            return None
-
-        # Extract price
-        price = safe_float(driver.find_element(By.ID, 'quoteLtp').text)
-        if price <= 0:
-            if retry_count < max_retries:
-                time.sleep(2)
-                return scrape_etf_fast(driver, symbol, isin, retry_count + 1)
-            return None
-
-        # Try NSE iNAV
-        inav = 0.0
-        try:
-            inav = safe_float(driver.find_element(By.ID, 'iNavValue').text)
-        except:
-            pass
-
-        # Extract other NSE data
-        logger.info(f"🔍 {symbol}: Extracting NSE fields... price={price}, inav={inav}")
-
-        prev_close = 0.0
-        try:
-            elem = driver.find_element(By.ID, 'stockPreviousClose')
-            prev_close = safe_float(elem.text)
-        except Exception as e:
-            logger.warning(f"⚠️ {symbol}: prev_close failed - {str(e)}")
-
-        open_price = 0.0
-        try:
-            elem = driver.find_element(By.ID, 'stockOpenPrice')
-            open_price = safe_float(elem.text)
-        except:
-            pass
-
-        day_high = 0.0
-        try:
-            day_high = safe_float(driver.find_element(By.ID, 'stockHigh').text)
-        except:
-            pass
-
-        day_low = 0.0
-        try:
-            day_low = safe_float(driver.find_element(By.ID, 'stockLow').text)
-        except:
-            pass
-
-        volume = 0
-        try:
-            elem = driver.find_element(By.ID, 'orderBookTradeVol')
-            vol_lakhs = safe_float(elem.text)
-            volume = int(vol_lakhs * 100000) if vol_lakhs > 0 else 0
-        except:
-            pass
-
-        week52_high = 0.0
-        try:
-            week52_high = safe_float(driver.find_element(By.ID, 'week52highVal').text)
-        except:
-            pass
-
-        week52_high_date = ""
-        try:
-            week52_high_date = driver.find_element(By.ID, 'week52HighDate').text.strip().replace('(', '').replace(')', '')
-        except:
-            pass
-
-        delivery_percent = 0.0
-        try:
-            delivery_text = driver.find_element(By.ID, 'orderBookDeliveryTradedQty').text.strip()
-            delivery_percent = safe_float(delivery_text.replace('%', ''))
-        except:
-            pass
-
-        # AMC Fallback (if iNAV not found on NSE)
-        if inav == 0:
-            try:
-                logger.info(f"🌐 {symbol}: iNAV not on NSE, trying AMC website...")
-
-                if symbol == "GOLD360":
-                    inav = scrape_360one_inav(symbol)
-                elif symbol in ["BSLGOLDETF", "SILVER"]:
-                    etfj_driver = create_optimized_driver()
-                    try:
-                        inav = scrape_etfjunction_inav(etfj_driver, symbol)
-                    finally:
-                        etfj_driver.quit()
-                else:
-                    amc_driver = create_optimized_driver()
-                    try:
-                        if symbol == "SETFGOLD":
-                            inav = scrape_sbi_inav(amc_driver, symbol)
-                        elif symbol == "SBISILVER":
-                            inav = scrape_sbi_inav(amc_driver, symbol)
-                        elif symbol == "GOLDSHARE":
-                            inav = scrape_uti_inav(amc_driver, symbol)
-                        elif symbol == "HDFCSILVER":
-                            inav = scrape_hdfc_inav(amc_driver, symbol)
-                    finally:
-                        amc_driver.quit()
-
-                if inav > 0:
-                    logger.info(f"✅ {symbol}: Got iNAV from AMC = ₹{inav}")
-            except Exception as amc_error:
-                logger.warning(f"⚠️ {symbol}: AMC scraping failed: {str(amc_error)}")
-                inav = 0.0
-
-        # Calculate metrics
-        change = price - prev_close if prev_close > 0 else 0.0
-        change_percent = (change / prev_close * 100) if prev_close > 0 else 0.0
-        discount = ((price - inav) / inav * 100) if inav > 0 else 0.0        
-        result = {
-            'symbol': symbol,
-            'isin': isin,
-            'price': round(price, 2),
-            'inav': round(inav, 2),
-            'discount': round(discount, 2),
-            'change': round(change, 2),
-            'changePercent': round(change_percent, 2),
-            'open': round(open_price, 2),
-            'dayHigh': round(day_high, 2),
-            'dayLow': round(day_low, 2),
-            'week52High': round(week52_high, 2),
-            'week52HighDate': week52_high_date,
-            'prevClose': round(prev_close, 2),
-            'deliveryPercent': round(delivery_percent, 2),
-            'vwap': round(price, 2),
-            'volume': volume,
-            'lastUpdate': datetime.now().isoformat(),
-            'status': 'live',
-            'dataAge': 'live'
-        }
-        logger.info(f"✅ {symbol}: ₹{price:.2f} | iNAV: ₹{inav:.2f} | Discount: {discount:.2f}%")
-        return result
-
-    except Exception as e:
-        if retry_count < max_retries:
-            time.sleep(2)
-            return scrape_etf_fast(driver, symbol, isin, retry_count + 1)
-        else:
-            logger.error(f"❌ {symbol}: Failed - {str(e)}")
-            return None
-'''
 def scrape_static_fields(driver, symbol, isin=""):
     """Scrape STATIC fields only: prevClose, open, week52High, week52HighDate, vwap"""
     try:
@@ -716,7 +619,7 @@ def scrape_etf_batch_parallel(etf_batch, batch_id):
         logger.info(f"🚀 Batch-{batch_id}: Processing {len(etf_batch)} ETFs")
 
         for etf in etf_batch:
-            nse_data = scrape_etf_fast(driver, etf['symbol'], etf.get('isin', ''))
+            nse_data = scrape_dynamic_fields(driver, etf['symbol'], etf.get('isin', ''))
 
             if nse_data and nse_data.get('price', 0) > 0:
                 etf_data = {**etf, **nse_data}
@@ -743,34 +646,7 @@ def scrape_etf_batch_parallel(etf_batch, batch_id):
                 driver.quit()
             except:
                 pass
-'''
-#original commented
-def calculate_mcx_fields(etf, mcx_gold, mcx_silver):
-    """Calculate effective price per gram and MCX comparison"""
-    
-    # Determine metal type and per-unit value
-    etf_type = etf.get('type', '')
-    metal_per_unit = float(etf.get('gold_per_unit', 0)) if etf_type == 'gold' else float(etf.get('silver_per_unit', 0))
-    price = float(etf.get('price', 0))
-    
-    # Get correct MCX spot price
-    mcx_spot = mcx_gold if etf_type == 'gold' else mcx_silver
-    
-    # Calculate effective price per gram
-    effective_price = (price / metal_per_unit) if metal_per_unit > 0 else 0
-    
-    # Calculate discount vs MCX
-    discount_mcx = 0
-    if mcx_spot > 0 and effective_price > 0:
-        discount_mcx = ((effective_price - mcx_spot) / mcx_spot) * 100
-    
-    # Add to ETF dict
-    etf['effective_price_per_gram'] = round(effective_price, 2)
-    etf['mcx_spot_per_gram'] = round(mcx_spot, 2)
-    etf['discount_vs_mcx'] = round(discount_mcx, 2)
-    
-    return etf
-'''
+
 def calculate_mcx_fields(etf, mcx_gold, mcx_silver):
     """Calculate effective price per gram and IBJA comparison (FIXED)"""
     
@@ -802,67 +678,7 @@ def calculate_mcx_fields(etf, mcx_gold, mcx_silver):
         etf['discount_vs_mcx'] = round(vs_ibja, 2)
     #logger.info(f"🔍 {etf.get('symbol', '')}: SAVED effective={etf['effective_price_per_gram']}, vs_ibja={etf['discount_vs_mcx']}")
     return etf
-'''
-#original
-def scrape_all_etfs_parallel():
-    """
-    Main scraping function - scrapes all 20 ETFs in parallel batches
-    Returns dict with gold_etfs, silver_etfs, timestamp, and counts
-    """
-    logger.info("⚡ Starting parallel scraping with AMC fallback...")
-    start_time = time.time()
-    # Step 1: Get MCX Spot Prices
-    mcx_prices = get_mcx_spot_prices()
-    mcx_gold = mcx_prices.get('gold_per_gram', 0.0)
-    mcx_silver = mcx_prices.get('silver_per_gram', 0.0)
-                                
-    all_etfs = ETF_LIST
-    logger.info(f"📊 Total ETFs to scrape: {len(all_etfs)}")
 
-    # Split into batches
-    batch_size = 5
-    batches = [all_etfs[i:i + batch_size] for i in range(0, len(all_etfs), batch_size)]
-
-    all_results = []
-    success_count = 0
-
-    # Process batches in parallel (max 2 workers to avoid NSE rate limits)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = {
-            executor.submit(scrape_etf_batch_parallel, batch, i+1): i
-            for i, batch in enumerate(batches)
-        }
-
-        for future in as_completed(futures):
-            try:
-                batch_results = future.result()
-                all_results.extend(batch_results)
-                success_count += sum(1 for r in batch_results if r.get('status') == 'live')
-            except Exception as e:
-                logger.error(f"❌ Batch failed: {str(e)}")
-    gold_etfs = [e for e in all_results if e['type'] == 'gold']
-    silver_etfs = [e for e in all_results if e['type'] == 'silver']
-    
-    # Calculate MCX fields for all ETFs (BEFORE creating results dict)
-    for etf in gold_etfs:
-        calculate_mcx_fields(etf, mcx_gold, mcx_silver)
-
-    for etf in silver_etfs:
-        calculate_mcx_fields(etf, mcx_gold, mcx_silver)
-    results = {
-        'gold_etfs': gold_etfs,
-        'silver_etfs': silver_etfs,
-        'mcx_spot_prices': mcx_prices,
-        'timestamp': datetime.now().isoformat(),
-        'success_count': success_count,
-        'total_count': len(all_etfs)
-    }
-
-    total_time = time.time() - start_time
-    logger.info(f"🎉 Scraping complete: {success_count}/{len(all_etfs)} live in {total_time:.1f}s")
-
-    return results
-'''
 def scrape_all_etfs_parallel():
     """OPTIMIZED TWO-TIER scraping with IBJA integration"""
     logger.info("⚡ Starting OPTIMIZED scraping with IBJA integration...")
@@ -905,44 +721,84 @@ def scrape_all_etfs_parallel():
     
     # Scrape dynamic (FAST, every call)
     logger.info("⚡ Scraping DYNAMIC fields...")
-    driver = create_optimized_driver()
+    # Scrape dynamic (PARALLEL, FAST!)
+    logger.info("⚡ Scraping DYNAMIC fields in PARALLEL...")
+    BATCH_SIZE = 5  # Process 5 ETFs concurrently
+    MAX_WORKERS = 4  # Use 4 parallel threads
+
+    batches = [ETF_LIST[i:i + BATCH_SIZE] for i in range(0, len(ETF_LIST), BATCH_SIZE)]
     all_results = []
     success_count = 0
-    
-    try:
-        for etf in ETF_LIST:
-            symbol = etf['symbol']
-            dynamic = scrape_dynamic_fields(driver, symbol, etf.get('isin', ''))
-            static = static_cache.get(symbol, {})
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_batch = {
+            executor.submit(scrape_etf_batch_parallel, batch, idx): idx
+            for idx, batch in enumerate(batches, 1)
+        }
+        ''' #original
+        for future in as_completed(future_to_batch):
+            batch_results = future.result()
+            for etf_data in batch_results:
+                static = static_cache.get(etf_data['symbol'], {})
+                
+                if etf_data.get('price', 0) > 0:
+                    price = etf_data.get('price', 0)
+                    prev_close = safe_float(static.get('prevClose', 0))
+                    inav = etf_data.get('inav', 0)
+                    
+                    change = price - prev_close if prev_close > 0 else 0.0
+                    change_percent = (change / prev_close * 100) if prev_close > 0 else 0.0
+                    discount = ((price - inav) / inav * 100) if inav > 0 else 0.0
+                    
+                    combined = {
+                        **etf_data,
+                        **static,
+                        'change': round(change, 2),
+                        'changePercent': round(change_percent, 2),
+                        'discount': round(discount, 2),
+                        'gold_per_gram': mcx_gold,
+                        'silver_per_gram': mcx_silver,
+                        'status': 'live',
+                        'lastUpdate': datetime.now().isoformat(),
+                        'dataAge': 'live'
+                    }
+                    all_results.append(combined)
+                    success_count += 1
+                    '''
+        #new update
+        for future in as_completed(future_to_batch):
+            batch_results = future.result()
+            for etf_data in batch_results:
+                # ⭐ FIX: Get original ETF metadata first
+                etf = next((e for e in ETF_LIST if e['symbol'] == etf_data['symbol']), {})
+                static = static_cache.get(etf_data['symbol'], {})
+                
+                if etf_data.get('price', 0) > 0:
+                    price = etf_data.get('price', 0)
+                    prev_close = safe_float(static.get('prevClose', 0))
+                    inav = etf_data.get('inav', 0)
+                    
+                    change = price - prev_close if prev_close > 0 else 0.0
+                    change_percent = (change / prev_close * 100) if prev_close > 0 else 0.0
+                    discount = ((price - inav) / inav * 100) if inav > 0 else 0.0
+                    
+                    # ⭐ CORRECT ORDER: etf (metadata) first, then dynamic, then static
+                    combined = {
+                        **etf,          # ETF metadata (name, type, isin, gold_per_unit, etc.)
+                        **etf_data,     # Dynamic fields (price, dayHigh, inav, etc.)
+                        **static,       # Static fields (prevClose, week52High, etc.)
+                        'change': round(change, 2),
+                        'changePercent': round(change_percent, 2),
+                        'discount': round(discount, 2),
+                        'gold_per_gram': mcx_gold,
+                        'silver_per_gram': mcx_silver,
+                        'status': 'live',
+                        'lastUpdate': datetime.now().isoformat(),
+                        'dataAge': 'live'
+                    }
+                    all_results.append(combined)
+                    success_count += 1
             
-            if dynamic and dynamic.get('price', 0) > 0:
-                price = dynamic.get('price', 0)
-                prev_close = safe_float(static.get('prevClose', 0))
-                inav = dynamic.get('inav', 0)
-                
-                change = price - prev_close if prev_close > 0 else 0.0
-                change_percent = (change / prev_close * 100) if prev_close > 0 else 0.0
-                discount = ((price - inav) / inav * 100) if inav > 0 else 0.0
-                
-                combined = {
-                    **etf,
-                    **static,
-                    **dynamic,
-                    'change': round(change, 2),
-                    'changePercent': round(change_percent, 2),
-                    'discount': round(discount, 2),
-                    'gold_per_gram': mcx_gold,
-                    'silver_per_gram': mcx_silver,
-                    'status': 'live',
-                    'lastUpdate': datetime.now().isoformat(),
-                    'dataAge': 'live'
-                }
-                all_results.append(combined)
-                success_count += 1
-            time.sleep(0.5)
-    finally:
-        driver.quit()
-    
     # Calculate IBJA fields
     for etf in all_results:
         calculate_mcx_fields(etf, mcx_gold, mcx_silver)
