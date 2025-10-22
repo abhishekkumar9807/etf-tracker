@@ -2,9 +2,7 @@
   "gold_per_gram": 12685.4,
   "silver_per_gram": 158.64,
   "source": "MCX_Spot",
-  "timestamp": "2025-10-21T22:49:57.590019",
-  "timestamp_display": "2025-10-21 10:49 PM IST",
-  "cache_age_hours": 15.1,
-  "note": "\u26a0\ufe0f Using cached data (15.1 hours old). Last updated: 2025-10-21 10:49 PM IST",
-  "warning": "\ud83d\udfe1 Cache is 15.1 hours old"
+  "timestamp": "2025-10-22T14:21:15.403973",
+  "timestamp_display": "2025-10-22 02:21 PM IST",
+  "cache_age_hours": 0
 }
