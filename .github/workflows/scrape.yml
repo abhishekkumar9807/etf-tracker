@@ -2,29 +2,47 @@ name: Scrape ETF Data
 
 on:
   schedule:
-    # ════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════
     # MONDAY-FRIDAY: Trading Hours (9:15 AM - 3:30 PM IST)
-    # ════════════════════════════════════════════════════════════
-    - cron: '45-59/5 3 * * 1-5'      # 9:15, 9:20, 9:25 AM IST
-    - cron: '0-55/5 4-9 * * 1-5'     # Every 5 mins (9:30 AM - 3:25 PM IST)
-    - cron: '0 10 * * 1-5'           # 3:30 PM IST - Market close
+    # 6-minute intervals to provide buffer for cold starts
+    # ═══════════════════════════════════════════════════════════
     
-    # ════════════════════════════════════════════════════════════
-    # MONDAY-FRIDAY: End-of-Day (6:30 PM IST)
-    # ════════════════════════════════════════════════════════════
-    - cron: '0 13 * * 1-5'           # 6:30 PM IST - EOD final
+    # 9:15 AM - 9:27 AM IST (3:45 - 3:57 UTC)
+    - cron: '45,51,57 3 * * 1-5'
     
-    # ════════════════════════════════════════════════════════════
-    # SATURDAY: Single run at 10:00 AM IST
-    # ════════════════════════════════════════════════════════════
-    - cron: '30 4 * * 6'             # 10:00 AM IST - Saturday
+    # 9:30 AM - 3:24 PM IST (4:00 - 9:54 UTC) - Every 6 minutes
+    - cron: '0,6,12,18,24,30,36,42,48,54 4-9 * * 1-5'
+    
+    # 3:30 PM IST (10:00 UTC) - Market close
+    - cron: '0 10 * * 1-5'
+    
+    # ═══════════════════════════════════════════════════════════
+    # MONDAY-FRIDAY: End-of-Day (6:35 PM IST)
+    # Offset to 6:35 PM to avoid top-of-hour scheduler delays
+    # ═══════════════════════════════════════════════════════════
+    - cron: '5 13 * * 1-5'
+    
+    # ═══════════════════════════════════════════════════════════
+    # SATURDAY: Single run at 10:05 AM IST
+    # Offset to avoid top-of-hour scheduler delays
+    # ═══════════════════════════════════════════════════════════
+    - cron: '35 4 * * 6'
   
   workflow_dispatch:
+
+# ═══════════════════════════════════════════════════════════════
+# CONCURRENCY CONTROL: Prevents Git commit conflicts
+# Runs are queued sequentially, no cancellation
+# ═══════════════════════════════════════════════════════════════
+concurrency:
+  group: etf-scraper
+  cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     
+    # Force timezone to IST for logging
     env:
       TZ: Asia/Kolkata
     
