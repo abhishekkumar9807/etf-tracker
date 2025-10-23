@@ -477,12 +477,12 @@ def scrape_static_fields(driver, symbol, isin=""):
 
 def scrape_dynamic_fields(driver, symbol, isin="", retry_count=0):
     """Scrape DYNAMIC fields: price, dayHigh, dayLow, deliveryPercent, inav, volume"""
-    max_retries = 2
+    max_retries = 1
     try:
         url = f"https://www.nseindia.com/get-quotes/equity?symbol={symbol}"
         driver.get(url)
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, 'quoteLtp')))
-        time.sleep(2)
+        time.sleep(1)
         
         price = safe_float(driver.find_element(By.ID, 'quoteLtp').text)
         if price <= 0:
