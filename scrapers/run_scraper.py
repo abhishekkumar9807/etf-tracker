@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 sys.path.append('.')
-from scrapers.etf_scraper_mcx import scrape_all_etfs_sequential
+from scrapers.etf_scraper_mcx import scrape_all_etfs_parallel
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
