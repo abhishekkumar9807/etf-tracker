@@ -90,7 +90,7 @@ def update_last_updated():
 
 def main():
     logger.info("⏳ Starting ETF scraper...")
-    results = scrape_all_etfs_sequential()
+    results = scrape_all_etfs_parallel()
 
     # Save files that app_fastapi_mcx.py expects
     save_etf_cache(results)      # ← Creates data/etf_cache.csv
