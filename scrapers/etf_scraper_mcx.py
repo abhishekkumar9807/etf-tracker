@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 STATIC_CACHE_FILE = 'etf_static_cache.csv'
 STATIC_CACHE_FILE_DATA = 'data/etf_static_cache.csv'
-STATIC_CACHE_TTL = 4 * 60 * 60  # 4 hours in seconds
+STATIC_CACHE_TTL = 8 * 60 * 60  # 4 hours in seconds
 
 def load_static_cache():
     """Load static data from cache file"""
