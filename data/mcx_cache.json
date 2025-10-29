@@ -1,10 +1,8 @@
 {
-  "gold_per_gram": 11868.7,
-  "silver_per_gram": 143.4,
+  "gold_per_gram": 11887.4,
+  "silver_per_gram": 145.73,
   "source": "IBJA (Requests)",
-  "timestamp": "2025-10-28T19:07:11.989439",
-  "timestamp_display": "2025-10-28 07:07 PM IST",
-  "cache_age_hours": 16.7,
-  "note": "\u26a0\ufe0f Using cached data (16.7 hours old). Last updated: 2025-10-28 07:07 PM IST",
-  "warning": "\ud83d\udfe1 Cache is 16.7 hours old"
+  "timestamp": "2025-10-29T12:17:27.273878",
+  "timestamp_display": "2025-10-29 12:17 PM IST",
+  "cache_age_hours": 0
 }
